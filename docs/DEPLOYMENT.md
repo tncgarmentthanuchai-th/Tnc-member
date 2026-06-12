@@ -2,93 +2,108 @@
 
 ## 1. เตรียม Google Sheet
 
-1. สร้าง Google Spreadsheet ใหม่
-2. คัดลอก Spreadsheet ID จาก URL:
+1. สร้าง Google Spreadsheet หรือใช้ไฟล์เดิม
+2. คัดลอก Spreadsheet ID จาก URL `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
+3. ไม่ต้องสร้างชีตย่อยเอง ระบบจะจัดเตรียม `Members`, `Orders`, `AuditLog` และ `Settings`
 
-   `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit`
+## 2. ตั้งค่า Apps Script
 
-3. ไม่ต้องสร้างชีตย่อยเอง ระบบจะสร้าง `Members`, `AuditLog` และ `Settings`
+1. เปิด Apps Script project และตั้ง time zone เป็น `Asia/Bangkok`
+2. Push source:
 
-## 2. เตรียม Apps Script
+   ```powershell
+   clasp.cmd push
+   ```
 
-1. สร้าง standalone Apps Script project ที่ [script.google.com](https://script.google.com)
-2. นำไฟล์ทั้งหมดใน `src` ขึ้นโปรเจกต์ โดยใช้ชื่อเดิม
-3. ตรวจว่า project time zone เป็น `Asia/Bangkok`
-4. เปิด **Project Settings > Script Properties**
-5. เพิ่มค่า:
+3. เปิด **Project Settings > Script Properties**
+4. ตั้งค่าดังนี้:
 
 | Property | Value |
 | --- | --- |
-| `SPREADSHEET_ID` | ID ของ Google Spreadsheet (เว้นว่างได้เมื่อ Script ผูกกับ Sheet โดยตรง) |
-| `ADMIN_EMAILS` | อีเมล Gmail แอดมิน คั่นด้วย comma เช่น `admin1@gmail.com,admin2@gmail.com` |
+| `SPREADSHEET_ID` | ID ของ Google Spreadsheet |
+| `SETUP_OWNER_EMAIL` | อีเมลเจ้าของที่มีสิทธิ์รัน bootstrap และติดตั้ง trigger |
+| `ADMIN_EMAILS` | อีเมลแอดมิน คั่นหลายบัญชีด้วย comma |
 
-6. เปิด editor เลือก `setupTncMemberSystem` แล้วกด **Run**
-7. อนุญาตสิทธิ์ Google และตรวจว่า Sheet ทั้งสามถูกสร้างครบ
+ตัวอย่าง:
 
-## 3. แชร์สิทธิ์ให้แอดมิน
+```text
+SETUP_OWNER_EMAIL=tncgarment.thanuchai@gmail.com
+ADMIN_EMAILS=tncgarment.thanuchai@gmail.com
+```
 
-Admin deployment ทำงานภายใต้บัญชีผู้เปิดเว็บ จึงต้องแชร์ Spreadsheet เป็น **Editor** ให้ทุกอีเมลใน `ADMIN_EMAILS`
+`SETUP_OWNER_EMAIL` ต้องตรงกับ `Session.getActiveUser().getEmail()` จึงควรรันคำสั่งติดตั้งจากบัญชีเจ้าของเดียวกัน
 
-อย่าแชร์ Spreadsheet แบบ public หรือ anyone-with-link
+## 3. ติดตั้งหรืออัปเกรด schema
 
-## 4. สร้าง Public deployment
+1. ใน Apps Script editor เลือก `bootstrapTncMemberSystem`
+2. กด **Run** และอนุญาตสิทธิ์ Google
+3. ตรวจ Spreadsheet:
+   - มีชีต `Orders`
+   - `Members` มีคอลัมน์ `points`, `tier`, `lastOrderAt`
+   - `Settings` มี `MEMBER_SEQUENCE`, `ORDER_SEQUENCE` และ schema version ล่าสุด
+4. เปิดหน้า **Triggers** และยืนยันว่ามี daily trigger ของ `reconcileAllMemberPoints_`
+5. หาก bootstrap ไม่สร้าง trigger ให้รัน `installPointsReconciliationTrigger` โดยตรงหนึ่งครั้ง
+
+ควรมี reconciliation trigger เพียงหนึ่งรายการ ระบบติดตั้งจะลบเฉพาะ trigger ซ้ำของ handler เดียวกัน
+
+## 4. สิทธิ์แอดมิน
+
+Admin deployment ทำงานภายใต้บัญชีผู้เปิดเว็บ:
+
+1. แชร์ Spreadsheet เป็น **Editor** ให้ทุกอีเมลใน `ADMIN_EMAILS`
+2. ห้ามแชร์ Spreadsheet แบบ public หรือ anyone-with-link
+3. แอดมินแต่ละคนต้อง authorize Apps Script ครั้งแรก
+
+## 5. Public deployment
 
 1. เลือก **Deploy > New deployment > Web app**
 2. Description: `TNC Member - Public`
 3. Execute as: **Me**
 4. Who has access: **Anyone**
-5. Deploy และเก็บ URL เป็น `PUBLIC_URL`
 
-หน้าใช้งาน:
+URL:
 
-`PUBLIC_URL`
+- สมัครสมาชิก: `PUBLIC_URL`
+- เข้าสู่ระบบสมาชิก: `PUBLIC_URL?page=member`
 
-หน้าบัญชีสมาชิก:
-
-`PUBLIC_URL?page=member`
-
-Public deployment เขียนข้อมูลด้วยสิทธิ์เจ้าของ Script ผู้สมัครจึงไม่ต้องเข้าสู่ระบบ Google
-
-## 5. สร้าง Admin deployment
+## 6. Admin deployment
 
 1. เลือก **Deploy > New deployment > Web app**
 2. Description: `TNC Member - Admin`
 3. Execute as: **User accessing the web app**
 4. Who has access: **Anyone with Google account**
-5. Deploy และเก็บ URL เป็น `ADMIN_DEPLOYMENT_URL`
 
-หน้าใช้งาน:
+URL หลังบ้าน: `ADMIN_DEPLOYMENT_URL?page=admin`
 
-`ADMIN_DEPLOYMENT_URL?page=admin`
+ห้ามใช้ `PUBLIC_URL?page=admin` เป็น URL หลังบ้าน เพราะ public deployment ทำงานในสิทธิ์เจ้าของและไม่ได้ใช้สำหรับยืนยันผู้ดูแลแต่ละบัญชี
 
-แอดมินแต่ละคนต้องเข้าสู่ระบบและอนุญาต scopes ครั้งแรก ระบบจะตรวจอีเมลกับ `ADMIN_EMAILS` ซ้ำใน server ทุกคำสั่ง
-
-> ห้ามใช้ `PUBLIC_URL?page=admin` เป็น URL หลังบ้าน เพราะ public deployment รันภายใต้เจ้าของ Script และไม่ได้ออกแบบให้ยืนยันตัวตนแอดมินทั่วไป
-
-## 6. Checklist หลัง deploy
-
-- เปิด `PUBLIC_URL` ในหน้าต่างไม่ระบุตัวตนและสมัครสมาชิกได้
-- ตรวจว่าได้เลข `TNC-000001` และมีหนึ่งแถวใน `Members`
-- สมัครด้วยเบอร์เดิมแล้วได้รหัสเดิมโดยไม่มีแถวเพิ่ม
-- เปิด Admin URL ด้วยบัญชีที่ไม่อยู่ใน allowlist แล้วถูกปฏิเสธ
-- เปิด Admin URL ด้วยบัญชีที่อนุญาตแล้วเห็นตารางสมาชิก
-- ค้นหา กรอง เปิดรายละเอียด และแก้ไขข้อมูลได้
-- ระงับโดยไม่กรอกเหตุผลไม่ได้
-- ระงับ/เปิดใช้งานแล้วมีรายการใหม่ใน `AuditLog`
-- ส่งออก CSV แล้วเปิดภาษาไทยใน Excel/Google Sheets ได้
-- ทดสอบหน้า Public และ Admin บนมือถือ
-
-## 7. การอัปเดตระบบ
+## 7. อัปเดต deployment เดิม
 
 หลังแก้ source:
 
-1. Push หรือคัดลอกไฟล์เวอร์ชันใหม่
-2. เลือก **Deploy > Manage deployments**
-3. แก้ Public และ Admin deployment ให้ใช้ version ใหม่
-4. ทำ checklist เฉพาะ workflow ที่ได้รับผลกระทบ
+1. รัน `npm.cmd test`
+2. รัน `clasp.cmd push`
+3. รัน `bootstrapTncMemberSystem()` เป็นเจ้าของเมื่อมี schema/trigger ใหม่
+4. เลือก **Deploy > Manage deployments**
+5. แก้ Public และ Admin deployment ให้ใช้ version ใหม่ โดยคง execute/access settings เดิม
+
+## 8. Production smoke test
+
+ทำตามลำดับนี้หลังสร้าง version ใหม่:
+
+1. สมัครสมาชิกหนึ่งรายและตรวจว่าเกิดแถวใน `Members`
+2. ล็อกอินด้วยเบอร์โทร + PIN
+3. เปิดหน้าแอดมินและเพิ่มออร์เดอร์ `30,000` บาท
+4. ตรวจว่าแต้มเป็น `30,000` และระดับเปลี่ยนเป็น `Gold`
+5. เปิดหน้าสมาชิกและตรวจแต้ม ระดับ สิทธิประโยชน์ และประวัติออร์เดอร์
+6. ยกเลิกออร์เดอร์พร้อมเหตุผล
+7. ตรวจว่าแต้มลดลง ระดับกลับเป็น `Silver` และรายการแสดงสถานะยกเลิก
+8. ตรวจ `AuditLog` ว่ามีการสร้างและยกเลิกออร์เดอร์
+9. เปิดหน้า Triggers และตรวจว่ามี reconciliation trigger เพียงหนึ่งรายการ
 
 ## ข้อจำกัด
 
-- Google Apps Script และ Google Sheets มี quota จึงเหมาะกับระบบสมาชิกขนาดเล็กถึงกลาง
-- Admin ที่ใช้ Gmail ทั่วไปต้อง authorize Apps Script และมีสิทธิ์แก้ไข Spreadsheet
-- การเปลี่ยน `memberId` โดยตรงใน Sheet อาจทำให้ลำดับไม่สอดคล้อง จึงควรแก้ผ่านระบบหลังบ้านเท่านั้น
+- Google Apps Script และ Google Sheets มี quota เหมาะกับระบบขนาดเล็กถึงกลาง
+- อย่าแก้ `memberId`, `orderId`, `points` หรือ `tier` โดยตรงใน Sheet
+- การแก้ยอดย้อนหลังให้ยกเลิกออร์เดอร์เดิม แล้วบันทึกออร์เดอร์ใหม่
+- ระบบยังไม่มีการแลกแต้ม และไม่รองรับการแก้ไขออร์เดอร์เดิม

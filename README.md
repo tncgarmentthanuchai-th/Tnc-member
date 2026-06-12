@@ -1,33 +1,50 @@
 # TNC Garment Member System
 
-ระบบสมัครและจัดการสมาชิกด้วย Google Apps Script + Google Sheets
+ระบบสมาชิกบน Google Apps Script และ Google Sheets สำหรับสมัครสมาชิก จัดการ PIN และสะสมแต้มจากยอดชำระ โดยใช้กติกา `1 บาท = 1 แต้ม`
 
 ## ความสามารถ
 
 - สมัครสมาชิกและออกเลข `TNC-000001` ต่อเนื่องด้วย `LockService`
-- ใช้เบอร์โทรศัพท์เป็นข้อมูลไม่ซ้ำ และคืนรหัสเดิมเมื่อสมัครซ้ำ
-- หน้าหลังบ้านค้นหา กรอง แบ่งหน้า แก้ไข ระงับ/เปิดใช้งาน และส่งออก CSV
-- Member Portal เข้าสู่ระบบด้วยเบอร์โทร + PIN 6 หลัก ดูและแก้ข้อมูลส่วนตัว
-- แอดมินออก PIN ชั่วคราวให้สมาชิกเดิม โดยบังคับเปลี่ยนหลังล็อกอิน
-- ตรวจสิทธิ์แอดมินด้วยบัญชี Google และ `ADMIN_EMAILS`
-- บันทึกการสร้าง แก้ไข และเปลี่ยนสถานะลง `AuditLog`
-- ตรวจข้อมูลทั้ง browser และ server พร้อมป้องกัน XSS/CSV formula injection
+- ป้องกันเบอร์โทรซ้ำ และคืนรหัสเดิมโดยไม่เปิดเผยข้อมูลส่วนตัว
+- เข้าสู่ระบบสมาชิกด้วยเบอร์โทร + PIN 6 หลัก
+- แอดมินออก PIN ชั่วคราว และบังคับสมาชิกเปลี่ยนก่อนใช้งานต่อ
+- แอดมินค้นหา แก้ไข ระงับ/เปิดใช้สมาชิก และส่งออก CSV
+- แอดมินบันทึกออร์เดอร์ ยกเลิกพร้อมเหตุผล และปรับแต้มอัตโนมัติ
+- ระดับสมาชิก: Silver `0-29,999`, Gold `30,000-99,999`, Platinum `100,000+`
+- สมาชิกดูแต้ม ระดับ สิทธิประโยชน์ และประวัติออร์เดอร์แบบแบ่งหน้า
+- งานตรวจสอบยอดแต้มรายวันซ่อม summary ที่ไม่ตรงกับออร์เดอร์
+- บันทึกการสร้าง แก้ไข เปลี่ยนสถานะ ออร์เดอร์ และการซ่อมแต้มใน `AuditLog`
+- ตรวจข้อมูลทั้ง client/server และไม่แทรกข้อมูลผู้ใช้ผ่าน `innerHTML`
 
-## โครงสร้าง
+## โครงสร้างสำคัญ
 
 - `src/Core.js` validation, filtering, pagination และ CSV
-- `src/MemberService.js` กติกาทางธุรกิจของสมาชิก
+- `src/PointsCore.js` กติกาแต้ม ระดับ สิทธิประโยชน์ และ order pagination
+- `src/MemberService.js` กติกาสมาชิก การล็อกอิน และ PIN
+- `src/OrderService.js` สร้าง/ยกเลิกออร์เดอร์และ reconciliation
 - `src/SheetRepository.js` อ่านและเขียน Google Sheets
-- `src/Auth.js` ตรวจบัญชี Google ของแอดมิน
-- `src/Code.js` web routing และ public/admin APIs
-- `src/Setup.js` สร้างชีตและ header
-- `src/Public.html`, `src/Admin.html` หน้าใช้งาน
-- `src/Member.html` หน้าเข้าสู่ระบบและบัญชีสมาชิก
-- `docs/DEPLOYMENT.md` คู่มือติดตั้งและเผยแพร่
+- `src/Auth.js` ตรวจสิทธิ์แอดมินและ session สมาชิก
+- `src/Code.js` routing และ public/admin/member APIs
+- `src/Setup.js` migration ชีต ค่าเริ่มต้น และ trigger
+- `src/Public.html` หน้าสมัครสมาชิก
+- `src/Member.html` หน้าบัญชีสมาชิกและแต้ม
+- `src/Admin.html` หน้าจัดการสมาชิกและออร์เดอร์
+- `docs/DEPLOYMENT.md` คู่มือติดตั้ง อัปเดต และตรวจสอบระบบ
+
+## Google Sheets
+
+ระบบใช้ชีตต่อไปนี้:
+
+- `Members` ข้อมูลสมาชิกและ summary `points`, `tier`, `lastOrderAt`
+- `Orders` ประวัติยอดชำระและการยกเลิก
+- `AuditLog` ประวัติการเปลี่ยนแปลง
+- `Settings` schema version และลำดับเลขสมาชิก/ออร์เดอร์
+
+ห้ามแก้แต้มใน `Members` โดยตรง ให้เพิ่มหรือยกเลิกออร์เดอร์ผ่านหน้าแอดมิน
 
 ## ทดสอบ
 
-ต้องมี Node.js 20 ขึ้นไป:
+ต้องใช้ Node.js 20 ขึ้นไป:
 
 ```powershell
 npm.cmd test
@@ -35,12 +52,10 @@ npm.cmd test
 
 ## นำขึ้น Apps Script
 
-ใช้ `clasp` หรือสร้างไฟล์ใน Apps Script editor ตามชื่อในโฟลเดอร์ `src`
-
 ```powershell
 Copy-Item .clasp.json.example .clasp.json
 # ใส่ Apps Script project ID ใน .clasp.json
-clasp push
+clasp.cmd push
 ```
 
 จากนั้นทำตาม [คู่มือ deployment](docs/DEPLOYMENT.md)

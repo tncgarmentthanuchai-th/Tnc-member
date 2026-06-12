@@ -97,13 +97,17 @@ test("publicMember exposes the member points summary", () => {
     points: "125",
     tier: "Gold",
     lastOrderAt: "2026-06-12T09:00:00.000Z",
-    pinHash: "secret"
+    pinHash: "secret",
+    pinSalt: "secret-salt",
+    sessionVersion: 9
   });
 
   assert.equal(member.points, 125);
   assert.equal(member.tier, "Gold");
   assert.equal(member.lastOrderAt, "2026-06-12T09:00:00.000Z");
   assert.equal(member.pinHash, undefined);
+  assert.equal(member.pinSalt, undefined);
+  assert.equal(member.sessionVersion, undefined);
 });
 
 test("publicMember normalizes points to a finite number", () => {
