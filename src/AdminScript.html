@@ -9,6 +9,10 @@
       pageSize: 20,
       totalPages: 1,
       currentMember: null,
+      orderPage: 1,
+      orderTotalPages: 1,
+      ordersLoading: false,
+      selectedOrderId: "",
       loading: false
     };
 
@@ -23,6 +27,12 @@
     var statusButton = document.getElementById("statusButton");
     var reasonField = document.getElementById("reasonField");
     var toast = document.getElementById("toast");
+    var orderForm = document.getElementById("orderForm");
+    var orderRows = document.getElementById("orderRows");
+    var orderPreviousButton = document.getElementById("orderPreviousButton");
+    var orderNextButton = document.getElementById("orderNextButton");
+    var cancelOrderModal = document.getElementById("cancelOrderModal");
+    var cancelOrderTrigger = null;
     var lastFocusedElement = null;
     var searchTimer = null;
 
@@ -31,6 +41,8 @@
       UNAUTHORIZED: "บัญชีนี้ไม่มีสิทธิ์จัดการสมาชิก",
       DUPLICATE_PHONE: "เบอร์โทรศัพท์นี้เป็นของสมาชิกคนอื่นแล้ว",
       NOT_FOUND: "ไม่พบข้อมูลสมาชิก",
+      MEMBER_SUSPENDED: "สมาชิกถูกระงับ ไม่สามารถเพิ่มออร์เดอร์ได้",
+      ORDER_ALREADY_CANCELLED: "ออร์เดอร์นี้ถูกยกเลิกแล้ว",
       SYSTEM_ERROR: "ระบบขัดข้องชั่วคราว กรุณาลองใหม่"
     };
 
@@ -70,6 +82,20 @@
         dateStyle: "medium",
         timeZone: "Asia/Bangkok"
       }).format(date);
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat("th-TH", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(Number(value) || 0);
+    }
+
+    function todayValue() {
+      var date = new Date();
+      var month = String(date.getMonth() + 1).padStart(2, "0");
+      var day = String(date.getDate()).padStart(2, "0");
+      return date.getFullYear() + "-" + month + "-" + day;
     }
 
     function appendCell(row, value) {
@@ -193,11 +219,121 @@
         : "สมาชิกเดิมยังไม่มี PIN";
       document.getElementById("temporaryPinPanel").classList.remove("visible");
       document.getElementById("temporaryPinValue").textContent = "";
+      renderMemberSummary(member);
 
       var isActive = member.status === "ใช้งาน";
       reasonField.style.display = isActive ? "block" : "none";
       statusButton.textContent = isActive ? "ระงับสมาชิก" : "เปิดใช้งาน";
       statusButton.className = "button " + (isActive ? "button-danger" : "button-primary");
+      document.getElementById("createOrderButton").disabled = !isActive;
+    }
+
+    function renderMemberSummary(member) {
+      document.getElementById("memberPoints").textContent =
+        formatMoney(member.points);
+      document.getElementById("memberTier").textContent =
+        member.tier || "Silver";
+      document.getElementById("memberLastOrder").textContent =
+        member.lastOrderAt ? formatDate(member.lastOrderAt) : "-";
+    }
+
+    function showOrderError(message) {
+      var alert = document.getElementById("orderAlert");
+      alert.textContent = message;
+      alert.classList.add("visible");
+    }
+
+    function clearOrderErrors() {
+      ["orderDate", "amount", "note"].forEach(function (field) {
+        var error = document.getElementById("orderError-" + field);
+        if (error) {
+          error.textContent = "";
+          error.classList.remove("visible");
+        }
+      });
+      var alert = document.getElementById("orderAlert");
+      alert.textContent = "";
+      alert.classList.remove("visible");
+    }
+
+    function setOrderFieldError(field, message) {
+      var error = document.getElementById("orderError-" + field);
+      if (!error) return;
+      error.textContent = message || "";
+      error.classList.toggle("visible", Boolean(message));
+    }
+
+    function renderOrders(result) {
+      orderRows.replaceChildren();
+      result.items.forEach(function (order) {
+        var row = document.createElement("tr");
+        appendCell(row, order.orderId);
+        appendCell(row, formatDate(order.orderDate));
+        appendCell(row, formatMoney(order.amount));
+
+        var statusCell = document.createElement("td");
+        var status = document.createElement("span");
+        status.className = "status " + (
+          order.status === "ACTIVE" ? "status-active" : "status-suspended"
+        );
+        status.textContent = order.status === "ACTIVE" ? "ใช้งาน" : "ยกเลิก";
+        statusCell.appendChild(status);
+        row.appendChild(statusCell);
+        appendCell(row, order.createdBy);
+
+        var actionCell = document.createElement("td");
+        if (order.status === "ACTIVE") {
+          var cancelButton = document.createElement("button");
+          cancelButton.type = "button";
+          cancelButton.className = "button button-danger button-small";
+          cancelButton.textContent = "ยกเลิก";
+          cancelButton.addEventListener("click", function () {
+            openCancelOrderDialog(order.orderId, cancelButton);
+          });
+          actionCell.appendChild(cancelButton);
+        } else {
+          actionCell.textContent = order.cancellationReason || "-";
+        }
+        row.appendChild(actionCell);
+        orderRows.appendChild(row);
+      });
+
+      document.getElementById("orderEmptyState").classList.toggle(
+        "visible",
+        result.items.length === 0
+      );
+      state.orderPage = result.page;
+      state.orderTotalPages = result.totalPages;
+      document.getElementById("orderPageSummary").textContent = result.total
+        ? "หน้า " + result.page + " จาก " + result.totalPages +
+          " · ทั้งหมด " + result.total + " รายการ"
+        : "ยังไม่มีข้อมูล";
+      orderPreviousButton.disabled = result.page <= 1;
+      orderNextButton.disabled = result.page >= result.totalPages;
+    }
+
+    async function loadMemberOrders() {
+      if (!state.currentMember || state.ordersLoading) return;
+      state.ordersLoading = true;
+      orderPreviousButton.disabled = true;
+      orderNextButton.disabled = true;
+      document.getElementById("orderPageSummary").textContent = "กำลังโหลด...";
+      try {
+        var result = await callServer("listMemberOrders", {
+          memberId: state.currentMember.memberId,
+          page: state.orderPage,
+          pageSize: 10
+        });
+        if (!result || !result.ok) {
+          showOrderError(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+        renderOrders(result);
+      } catch (error) {
+        showOrderError(errorMessages.SYSTEM_ERROR);
+      } finally {
+        state.ordersLoading = false;
+      }
     }
 
     async function openMember(memberId, trigger) {
@@ -210,6 +346,11 @@
           return;
         }
         populateModal(result.member);
+        state.orderPage = 1;
+        clearOrderErrors();
+        orderForm.reset();
+        document.getElementById("orderDate").value = todayValue();
+        await loadMemberOrders();
         modal.classList.add("visible");
         document.body.style.overflow = "hidden";
         document.getElementById("editFullname").focus();
@@ -222,6 +363,8 @@
       modal.classList.remove("visible");
       document.body.style.overflow = "";
       state.currentMember = null;
+      state.orderPage = 1;
+      orderRows.replaceChildren();
       if (lastFocusedElement) lastFocusedElement.focus();
     }
 
@@ -238,6 +381,7 @@
     function setModalLoading(loading) {
       document.getElementById("saveButton").disabled = loading;
       statusButton.disabled = loading;
+      document.getElementById("resetPinButton").disabled = loading;
     }
 
     editForm.addEventListener("submit", async function (event) {
@@ -335,6 +479,129 @@
       }
     });
 
+    async function refreshCurrentMemberAndOrders() {
+      if (!state.currentMember) return;
+      var result = await callServer("getMember", state.currentMember.memberId);
+      if (!result || !result.ok) {
+        throw new Error("MEMBER_REFRESH_FAILED");
+      }
+      populateModal(result.member);
+      await loadMemberOrders();
+    }
+
+    orderForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (!state.currentMember) return;
+      clearOrderErrors();
+      var button = document.getElementById("createOrderButton");
+      button.disabled = true;
+      try {
+        var result = await callServer("createOrder", {
+          memberId: state.currentMember.memberId,
+          orderDate: document.getElementById("orderDate").value,
+          amount: document.getElementById("orderAmount").value,
+          note: document.getElementById("orderNote").value.trim()
+        });
+        if (!result || !result.ok) {
+          if (result && result.fields) {
+            Object.keys(result.fields).forEach(function (field) {
+              setOrderFieldError(field, result.fields[field]);
+            });
+          }
+          showOrderError(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+        orderForm.reset();
+        document.getElementById("orderDate").value = todayValue();
+        state.orderPage = 1;
+        await refreshCurrentMemberAndOrders();
+        showToast("เพิ่มออร์เดอร์และแต้มแล้ว", false);
+      } catch (error) {
+        showOrderError(errorMessages.SYSTEM_ERROR);
+      } finally {
+        button.disabled = state.currentMember
+          ? state.currentMember.status !== "ใช้งาน"
+          : false;
+      }
+    });
+
+    function openCancelOrderDialog(orderId, trigger) {
+      state.selectedOrderId = orderId;
+      cancelOrderTrigger = trigger;
+      document.getElementById("cancelOrderDescription").textContent =
+        "ออร์เดอร์ " + orderId + " จะถูกยกเลิกและหักแต้มออกจากสมาชิก";
+      document.getElementById("cancelOrderReason").value = "";
+      document.getElementById("cancelOrderError").textContent = "";
+      document.getElementById("cancelOrderError").classList.remove("visible");
+      cancelOrderModal.classList.add("visible");
+      document.getElementById("cancelOrderReason").focus();
+    }
+
+    function closeCancelOrderDialog() {
+      cancelOrderModal.classList.remove("visible");
+      state.selectedOrderId = "";
+      if (cancelOrderTrigger) cancelOrderTrigger.focus();
+      cancelOrderTrigger = null;
+    }
+
+    document.getElementById("confirmCancelOrderButton").addEventListener("click", async function () {
+      var reason = document.getElementById("cancelOrderReason").value.trim();
+      var error = document.getElementById("cancelOrderError");
+      if (reason.length < 3) {
+        error.textContent = "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร";
+        error.classList.add("visible");
+        document.getElementById("cancelOrderReason").focus();
+        return;
+      }
+      var button = this;
+      button.disabled = true;
+      try {
+        var result = await callServer("cancelOrder", {
+          orderId: state.selectedOrderId,
+          reason: reason
+        });
+        if (!result || !result.ok) {
+          error.textContent = errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR;
+          error.classList.add("visible");
+          return;
+        }
+        closeCancelOrderDialog();
+        await refreshCurrentMemberAndOrders();
+        showToast("ยกเลิกออร์เดอร์และปรับแต้มแล้ว", false);
+      } catch (exception) {
+        error.textContent = errorMessages.SYSTEM_ERROR;
+        error.classList.add("visible");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("closeCancelOrderButton").addEventListener(
+      "click",
+      closeCancelOrderDialog
+    );
+    document.getElementById("dismissCancelOrderButton").addEventListener(
+      "click",
+      closeCancelOrderDialog
+    );
+    cancelOrderModal.addEventListener("click", function (event) {
+      if (event.target === cancelOrderModal) closeCancelOrderDialog();
+    });
+
+    orderPreviousButton.addEventListener("click", function () {
+      if (state.orderPage > 1) {
+        state.orderPage -= 1;
+        loadMemberOrders();
+      }
+    });
+
+    orderNextButton.addEventListener("click", function () {
+      if (state.orderPage < state.orderTotalPages) {
+        state.orderPage += 1;
+        loadMemberOrders();
+      }
+    });
+
     document.getElementById("searchInput").addEventListener("input", function () {
       window.clearTimeout(searchTimer);
       var value = this.value.trim();
@@ -400,7 +667,12 @@
       if (event.target === modal) closeModal();
     });
     document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && modal.classList.contains("visible")) closeModal();
+      if (event.key !== "Escape") return;
+      if (cancelOrderModal.classList.contains("visible")) {
+        closeCancelOrderDialog();
+      } else if (modal.classList.contains("visible")) {
+        closeModal();
+      }
     });
 
     async function initialize() {

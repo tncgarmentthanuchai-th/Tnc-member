@@ -692,3 +692,31 @@ test("member account includes tier benefits and reconciliation uses SYSTEM actor
   assert.equal(reconciliation.ok, true);
   assert.equal(reconcileActor, "SYSTEM");
 });
+
+test("admin page contains accessible order management controls", () => {
+  const html = fs.readFileSync(path.join(sourceDirectory, "Admin.html"), "utf8");
+  [
+    "memberPoints",
+    "memberTier",
+    "memberLastOrder",
+    "orderForm",
+    "orderDate",
+    "orderAmount",
+    "orderNote",
+    "orderRows",
+    "orderPreviousButton",
+    "orderNextButton",
+    "cancelOrderModal",
+    "cancelOrderReason",
+    "confirmCancelOrderButton"
+  ].forEach((id) => {
+    assert.match(html, new RegExp(`id="${id}"`), `missing #${id}`);
+  });
+  const editForm = html.match(/<form[^>]*id="editForm"[\s\S]*?<\/form>/);
+  assert.ok(editForm, "missing #editForm");
+  assert.equal(
+    editForm[0].includes('id="orderForm"'),
+    false,
+    "orderForm must not be nested inside editForm"
+  );
+});

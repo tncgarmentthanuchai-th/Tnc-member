@@ -353,7 +353,7 @@
   .modal-backdrop.visible { display: flex; }
 
   .modal {
-    width: min(100%, 620px);
+    width: min(100%, 900px);
     max-height: calc(100vh - 36px);
     overflow-y: auto;
     border-radius: 15px;
@@ -373,6 +373,55 @@
   .modal-header h2 { margin: 0; color: var(--navy); font-size: 19px; }
   .modal-close { border: 0; color: var(--muted); background: transparent; font-size: 24px; line-height: 1; }
   .modal-body { padding: 22px; }
+  .modal-small { width: min(100%, 520px); }
+
+  .order-management {
+    border-top: 8px solid var(--soft);
+  }
+  .order-management h2 {
+    margin: 0 0 16px;
+    color: var(--navy);
+    font-size: 19px;
+  }
+  .points-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .points-summary-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--soft);
+  }
+  .points-summary-card span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .points-summary-card strong {
+    display: block;
+    margin-top: 5px;
+    color: var(--navy);
+    font-size: 20px;
+  }
+  .order-form {
+    margin-bottom: 20px;
+    border-radius: 12px;
+    padding: 16px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .order-table-scroll {
+    border: 1px solid var(--line);
+    border-radius: 10px 10px 0 0;
+  }
+  .button-small {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
 
   .status-actions {
     display: flex;
@@ -441,6 +490,8 @@
     .toolbar .button { width: 100%; }
     .status-actions { align-items: stretch; flex-direction: column; }
     .status-actions .button { width: 100%; }
+    .points-summary-grid { grid-template-columns: 1fr; }
+    .order-form .button { width: 100%; }
   }
 
   @media (max-width: 520px) {

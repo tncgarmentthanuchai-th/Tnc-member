@@ -151,6 +151,93 @@
           <button id="saveButton" class="button button-primary" type="submit">บันทึกข้อมูล</button>
         </footer>
       </form>
+
+      <section class="order-management" aria-labelledby="orderManagementTitle">
+        <div class="modal-body">
+          <h2 id="orderManagementTitle">แต้มและออร์เดอร์</h2>
+          <div class="points-summary-grid">
+            <div class="points-summary-card">
+              <span>แต้มสะสม</span>
+              <strong id="memberPoints">0</strong>
+            </div>
+            <div class="points-summary-card">
+              <span>ระดับสมาชิก</span>
+              <strong id="memberTier">Silver</strong>
+            </div>
+            <div class="points-summary-card">
+              <span>สั่งซื้อล่าสุด</span>
+              <strong id="memberLastOrder">-</strong>
+            </div>
+          </div>
+
+          <form id="orderForm" class="order-form" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label for="orderDate">วันที่รับชำระ <span class="required">*</span></label>
+                <input id="orderDate" type="date" required>
+                <p id="orderError-orderDate" class="field-error"></p>
+              </div>
+              <div class="field">
+                <label for="orderAmount">ยอดชำระ (บาท) <span class="required">*</span></label>
+                <input id="orderAmount" type="number" min="0.01" max="10000000" step="0.01" inputmode="decimal" required>
+                <p id="orderError-amount" class="field-error"></p>
+              </div>
+            </div>
+            <div class="field">
+              <label for="orderNote">หมายเหตุ</label>
+              <textarea id="orderNote" maxlength="500"></textarea>
+              <p id="orderError-note" class="field-error"></p>
+            </div>
+            <button id="createOrderButton" class="button button-primary" type="submit">เพิ่มออร์เดอร์</button>
+          </form>
+
+          <div id="orderAlert" class="alert alert-error" role="alert"></div>
+          <div class="table-scroll order-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">เลขออร์เดอร์</th>
+                  <th scope="col">วันที่</th>
+                  <th scope="col">ยอด/แต้ม</th>
+                  <th scope="col">สถานะ</th>
+                  <th scope="col">ผู้บันทึก</th>
+                  <th scope="col">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="orderRows"></tbody>
+            </table>
+          </div>
+          <div id="orderEmptyState" class="empty-state">ยังไม่มีประวัติออร์เดอร์</div>
+          <div class="pagination">
+            <span id="orderPageSummary">ยังไม่มีข้อมูล</span>
+            <div class="pagination-actions">
+              <button id="orderPreviousButton" class="button button-secondary" type="button">ก่อนหน้า</button>
+              <button id="orderNextButton" class="button button-secondary" type="button">ถัดไป</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div id="cancelOrderModal" class="modal-backdrop" role="presentation">
+    <section class="modal modal-small" role="dialog" aria-modal="true" aria-labelledby="cancelOrderTitle">
+      <header class="modal-header">
+        <h2 id="cancelOrderTitle">ยืนยันยกเลิกออร์เดอร์</h2>
+        <button id="closeCancelOrderButton" class="modal-close" type="button" aria-label="ปิดหน้าต่าง">×</button>
+      </header>
+      <div class="modal-body">
+        <p id="cancelOrderDescription"></p>
+        <div class="field">
+          <label for="cancelOrderReason">เหตุผลการยกเลิก <span class="required">*</span></label>
+          <textarea id="cancelOrderReason" minlength="3" maxlength="300" required></textarea>
+          <p id="cancelOrderError" class="field-error"></p>
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <button id="dismissCancelOrderButton" class="button button-secondary" type="button">กลับ</button>
+        <button id="confirmCancelOrderButton" class="button button-danger" type="button">ยืนยันยกเลิก</button>
+      </footer>
     </section>
   </div>
 
