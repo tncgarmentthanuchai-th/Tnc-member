@@ -8,6 +8,13 @@
     var loginAlert = document.getElementById("loginAlert");
     var accountAlert = document.getElementById("accountAlert");
     var currentPhone = "";
+    var currentBenefits = null;
+    var orderPage = 1;
+    var orderTotalPages = 1;
+    var ordersLoading = false;
+    var myOrderRows = document.getElementById("myOrderRows");
+    var myOrderPreviousButton = document.getElementById("myOrderPreviousButton");
+    var myOrderNextButton = document.getElementById("myOrderNextButton");
 
     function callServer(name, argument) {
       return new Promise(function (resolve, reject) {
@@ -29,28 +36,208 @@
     function logout(message) {
       sessionStorage.removeItem(storageKey);
       token = "";
+      currentBenefits = null;
+      orderPage = 1;
+      orderTotalPages = 1;
+      ordersLoading = false;
+      myOrderRows.replaceChildren();
+      document.getElementById("myOrderPageSummary").textContent = "ยังไม่มีข้อมูล";
+      document.getElementById("myOrderEmptyState").classList.remove("visible");
+      document.body.classList.remove("member-account-open");
       accountView.hidden = true;
       loginView.hidden = false;
       document.getElementById("loginForm").reset();
       if (message) showAlert(loginAlert, message);
     }
 
+    function formatPoints(value) {
+      return new Intl.NumberFormat("th-TH", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }).format(Number(value) || 0);
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat("th-TH", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(Number(value) || 0);
+    }
+
+    function formatDate(value) {
+      if (!value) return "";
+      var date = new Date(value + "T00:00:00");
+      if (Number.isNaN(date.getTime())) return String(value);
+      return new Intl.DateTimeFormat("th-TH", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }).format(date);
+    }
+
+    function appendBenefit(text) {
+      var item = document.createElement("li");
+      item.textContent = text;
+      document.getElementById("tierBenefits").appendChild(item);
+    }
+
+    function renderBenefits(benefits) {
+      var list = document.getElementById("tierBenefits");
+      list.replaceChildren();
+      if (!benefits) {
+        appendBenefit("ส่วนลดสมาชิกตามระดับ");
+        return;
+      }
+      appendBenefit("ส่วนลด " + benefits.discount + "%");
+      if (benefits.priority) appendBenefit("รับลำดับงานพิเศษ");
+      if (benefits.freeDesign) {
+        appendBenefit(benefits.freeDesignPerOrder == null
+          ? "ออกแบบฟรีไม่จำกัดต่อออร์เดอร์"
+          : "ออกแบบฟรี " + benefits.freeDesignPerOrder + " แบบต่อออร์เดอร์");
+      }
+      if (benefits.freeSample) {
+        appendBenefit(benefits.freeSamplePerOrder == null
+          ? "ตัวอย่างสินค้าฟรีไม่จำกัดต่อออร์เดอร์"
+          : "ตัวอย่างสินค้าฟรี " + benefits.freeSamplePerOrder + " ชิ้นต่อออร์เดอร์");
+      }
+      if (benefits.freeShipping) appendBenefit("จัดส่งฟรี");
+      if (benefits.lockedPriceMonths) {
+        appendBenefit("ล็อกราคา " + benefits.lockedPriceMonths + " เดือน");
+      }
+      if (benefits.dedicatedAdmin) appendBenefit("แอดมินดูแลเฉพาะ");
+      if (benefits.eventInvite) appendBenefit("สิทธิ์เข้าร่วมกิจกรรมพิเศษ");
+    }
+
+    function renderTierProgress(points, tier) {
+      var value = 0;
+      var text = "";
+      if (tier === "Platinum") {
+        value = 100;
+        text = "ระดับสูงสุด";
+      } else if (tier === "Gold") {
+        value = Math.max(0, Math.min(100, ((points - 30000) / 70000) * 100));
+        text = "อีก " + formatPoints(Math.max(0, 100000 - points)) +
+          " แต้มสู่ Platinum";
+      } else {
+        value = Math.max(0, Math.min(100, (points / 30000) * 100));
+        text = "อีก " + formatPoints(Math.max(0, 30000 - points)) +
+          " แต้มสู่ Gold";
+      }
+      document.getElementById("tierProgress").value = value;
+      document.getElementById("tierProgressText").textContent = text;
+    }
+
     function renderAccount(result) {
       var member = result.member;
+      var points = Number(member.points) || 0;
+      var tier = member.tier || "Silver";
+      if (result.benefits) currentBenefits = result.benefits;
       currentPhone = member.phone;
+      document.body.classList.add("member-account-open");
       loginView.hidden = true;
       accountView.hidden = false;
       document.getElementById("accountGreeting").textContent = member.fullname;
       document.getElementById("accountMemberId").textContent = member.memberId;
       document.getElementById("accountStatus").textContent = member.status;
+      document.getElementById("accountPoints").textContent = formatPoints(points);
+      document.getElementById("accountTier").textContent = tier;
+      document.getElementById("accountTier").className =
+        "tier-badge tier-" + tier.toLowerCase();
+      document.getElementById("accountLastOrder").textContent = member.lastOrderAt
+        ? "สั่งซื้อล่าสุด " + formatDate(member.lastOrderAt)
+        : "ยังไม่มีรายการสั่งซื้อ";
+      renderTierProgress(points, tier);
+      renderBenefits(currentBenefits);
       document.getElementById("accountFullname").value = member.fullname;
       document.getElementById("accountPhone").value = member.phone;
       document.getElementById("accountOrgType").value = member.orgType;
       document.getElementById("accountOrgName").value = member.orgName;
       document.getElementById("profileSection").hidden = result.mustChangePin;
+      document.getElementById("myOrdersSection").hidden = result.mustChangePin;
       document.getElementById("changePinTitle").textContent = result.mustChangePin
         ? "ต้องเปลี่ยน PIN ชั่วคราวก่อนใช้งาน"
         : "เปลี่ยน PIN";
+    }
+
+    function appendOrderCell(row, value) {
+      var cell = document.createElement("td");
+      cell.textContent = value || "-";
+      row.appendChild(cell);
+      return cell;
+    }
+
+    function renderMyOrders(result) {
+      myOrderRows.replaceChildren();
+      result.items.forEach(function (order) {
+        var row = document.createElement("tr");
+        appendOrderCell(row, order.orderId);
+        appendOrderCell(row, formatDate(order.orderDate));
+
+        var amountCell = appendOrderCell(row, formatMoney(order.amount) + " บาท");
+        if (order.status === "CANCELLED") {
+          var note = document.createElement("small");
+          note.className = "cancelled-points-note";
+          note.textContent = "ไม่นับรวมแต้ม";
+          amountCell.appendChild(note);
+        }
+
+        var statusCell = document.createElement("td");
+        var status = document.createElement("span");
+        status.className = "status " + (
+          order.status === "ACTIVE" ? "status-active" : "status-suspended"
+        );
+        status.textContent = order.status === "ACTIVE" ? "ได้รับแต้ม" : "ยกเลิก";
+        statusCell.appendChild(status);
+        row.appendChild(statusCell);
+        myOrderRows.appendChild(row);
+      });
+
+      orderPage = result.page;
+      orderTotalPages = result.totalPages;
+      document.getElementById("myOrderEmptyState").classList.toggle(
+        "visible",
+        result.items.length === 0
+      );
+      document.getElementById("myOrderPageSummary").textContent = result.total
+        ? "หน้า " + result.page + " จาก " + result.totalPages +
+          " · ทั้งหมด " + result.total + " รายการ"
+        : "ยังไม่มีข้อมูล";
+      myOrderPreviousButton.disabled = result.page <= 1;
+      myOrderNextButton.disabled = result.page >= result.totalPages;
+    }
+
+    async function loadMyOrders(page) {
+      if (!token || ordersLoading) return;
+      ordersLoading = true;
+      orderPage = page || 1;
+      myOrderPreviousButton.disabled = true;
+      myOrderNextButton.disabled = true;
+      document.getElementById("myOrderPageSummary").textContent = "กำลังโหลด...";
+      clearAlert(document.getElementById("myOrdersAlert"));
+      try {
+        var result = await callServer("getMyOrders", {
+          token: token,
+          page: orderPage,
+          pageSize: 10
+        });
+        if (!result || !result.ok) {
+          showAlert(
+            document.getElementById("myOrdersAlert"),
+            result && result.code === "PIN_CHANGE_REQUIRED"
+              ? "กรุณาเปลี่ยน PIN ชั่วคราวก่อนดูประวัติออร์เดอร์"
+              : "ไม่สามารถโหลดประวัติออร์เดอร์ได้"
+          );
+          return;
+        }
+        renderMyOrders(result);
+      } catch (error) {
+        showAlert(
+          document.getElementById("myOrdersAlert"),
+          "ไม่สามารถเชื่อมต่อประวัติออร์เดอร์ได้ กรุณาลองใหม่"
+        );
+      } finally {
+        ordersLoading = false;
+      }
     }
 
     async function loadAccount() {
@@ -62,6 +249,7 @@
           return;
         }
         renderAccount(result);
+        if (!result.mustChangePin) await loadMyOrders(1);
       } catch (error) {
         logout("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่");
       }
@@ -85,7 +273,7 @@
         }
         token = result.token;
         sessionStorage.setItem(storageKey, token);
-        renderAccount(result);
+        await loadAccount();
       } catch (error) {
         showAlert(loginAlert, "ระบบขัดข้องชั่วคราว กรุณาลองใหม่");
       } finally {
@@ -116,7 +304,11 @@
           logout("เปลี่ยนเบอร์สำเร็จ กรุณาเข้าสู่ระบบด้วยเบอร์ใหม่");
           return;
         }
-        renderAccount({ member: result.member, mustChangePin: false });
+        renderAccount({
+          member: result.member,
+          mustChangePin: false,
+          benefits: currentBenefits
+        });
         showAlert(accountAlert, "บันทึกข้อมูลแล้ว");
       } catch (error) {
         showAlert(accountAlert, "ระบบขัดข้องชั่วคราว กรุณาลองใหม่");
@@ -151,6 +343,14 @@
 
     document.getElementById("logoutButton").addEventListener("click", function () {
       logout("");
+    });
+
+    myOrderPreviousButton.addEventListener("click", function () {
+      if (orderPage > 1) loadMyOrders(orderPage - 1);
+    });
+
+    myOrderNextButton.addEventListener("click", function () {
+      if (orderPage < orderTotalPages) loadMyOrders(orderPage + 1);
     });
 
     loadAccount();

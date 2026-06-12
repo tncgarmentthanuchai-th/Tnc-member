@@ -56,6 +56,61 @@
             </div>
           </div>
 
+          <section id="rewardsSection" class="rewards-section" aria-labelledby="rewardsTitle">
+            <div class="rewards-hero">
+              <div>
+                <p class="rewards-eyebrow">TNC REWARDS</p>
+                <h2 id="rewardsTitle">แต้มสะสมของคุณ</h2>
+                <strong id="accountPoints" class="rewards-points">0</strong>
+                <span class="rewards-unit">แต้ม</span>
+              </div>
+              <div class="tier-panel">
+                <span class="tier-label">ระดับสมาชิก</span>
+                <strong id="accountTier" class="tier-badge">Silver</strong>
+                <span id="accountLastOrder" class="last-order">ยังไม่มีรายการสั่งซื้อ</span>
+              </div>
+            </div>
+
+            <div class="tier-progress-panel">
+              <div class="tier-progress-heading">
+                <span>ความคืบหน้าระดับสมาชิก</span>
+                <span id="tierProgressText"></span>
+              </div>
+              <progress id="tierProgress" max="100" value="0" aria-label="ความคืบหน้าสู่ระดับสมาชิกถัดไป"></progress>
+            </div>
+
+            <div class="tier-benefits-panel">
+              <h3>สิทธิประโยชน์ของระดับนี้</h3>
+              <ul id="tierBenefits" class="tier-benefits"></ul>
+            </div>
+          </section>
+
+          <section id="myOrdersSection" class="account-section" aria-labelledby="myOrdersTitle">
+            <h2 id="myOrdersTitle">ประวัติออร์เดอร์และแต้ม</h2>
+            <div id="myOrdersAlert" class="alert alert-error" role="alert"></div>
+            <div class="table-scroll member-order-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">เลขออร์เดอร์</th>
+                    <th scope="col">วันที่</th>
+                    <th scope="col">ยอดชำระ</th>
+                    <th scope="col">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody id="myOrderRows"></tbody>
+              </table>
+            </div>
+            <div id="myOrderEmptyState" class="empty-state">ยังไม่มีประวัติออร์เดอร์</div>
+            <div class="pagination">
+              <span id="myOrderPageSummary">ยังไม่มีข้อมูล</span>
+              <div class="pagination-actions">
+                <button id="myOrderPreviousButton" class="button button-secondary" type="button">ก่อนหน้า</button>
+                <button id="myOrderNextButton" class="button button-secondary" type="button">ถัดไป</button>
+              </div>
+            </div>
+          </section>
+
           <section id="profileSection" class="account-section">
             <h2>ข้อมูลส่วนตัว</h2>
             <form id="profileForm">

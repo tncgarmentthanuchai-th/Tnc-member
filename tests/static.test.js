@@ -720,3 +720,25 @@ test("admin page contains accessible order management controls", () => {
     "orderForm must not be nested inside editForm"
   );
 });
+
+test("member page contains points dashboard and order history controls", () => {
+  const html = fs.readFileSync(path.join(sourceDirectory, "Member.html"), "utf8");
+  [
+    "accountPoints",
+    "accountTier",
+    "tierBenefits",
+    "tierProgress",
+    "tierProgressText",
+    "accountLastOrder",
+    "myOrderRows",
+    "myOrderPreviousButton",
+    "myOrderNextButton"
+  ].forEach((id) => {
+    assert.match(html, new RegExp(`id="${id}"`), `missing #${id}`);
+  });
+  assert.match(
+    html,
+    /<progress[^>]*id="tierProgress"[^>]*>/,
+    "tier progress must use a native progress element"
+  );
+});
