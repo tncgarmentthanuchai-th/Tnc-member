@@ -1,0 +1,422 @@
+<script>
+  (function () {
+    "use strict";
+
+    var state = {
+      search: "",
+      status: "",
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+      currentMember: null,
+      loading: false
+    };
+
+    var rows = document.getElementById("memberRows");
+    var emptyState = document.getElementById("emptyState");
+    var pageSummary = document.getElementById("pageSummary");
+    var previousButton = document.getElementById("previousButton");
+    var nextButton = document.getElementById("nextButton");
+    var adminAlert = document.getElementById("adminAlert");
+    var modal = document.getElementById("memberModal");
+    var editForm = document.getElementById("editForm");
+    var statusButton = document.getElementById("statusButton");
+    var reasonField = document.getElementById("reasonField");
+    var toast = document.getElementById("toast");
+    var lastFocusedElement = null;
+    var searchTimer = null;
+
+    var errorMessages = {
+      VALIDATION_ERROR: "กรุณาตรวจสอบข้อมูลที่กรอก",
+      UNAUTHORIZED: "บัญชีนี้ไม่มีสิทธิ์จัดการสมาชิก",
+      DUPLICATE_PHONE: "เบอร์โทรศัพท์นี้เป็นของสมาชิกคนอื่นแล้ว",
+      NOT_FOUND: "ไม่พบข้อมูลสมาชิก",
+      SYSTEM_ERROR: "ระบบขัดข้องชั่วคราว กรุณาลองใหม่"
+    };
+
+    function callServer(functionName, argument) {
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject);
+        runner[functionName](argument);
+      });
+    }
+
+    function showAdminError(message) {
+      adminAlert.textContent = message;
+      adminAlert.classList.add("visible");
+    }
+
+    function clearAdminError() {
+      adminAlert.textContent = "";
+      adminAlert.classList.remove("visible");
+    }
+
+    function showToast(message, isError) {
+      toast.textContent = message;
+      toast.classList.toggle("error", Boolean(isError));
+      toast.classList.add("visible");
+      window.setTimeout(function () {
+        toast.classList.remove("visible");
+      }, 2800);
+    }
+
+    function formatDate(value) {
+      if (!value) return "-";
+      var date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat("th-TH", {
+        dateStyle: "medium",
+        timeZone: "Asia/Bangkok"
+      }).format(date);
+    }
+
+    function appendCell(row, value) {
+      var cell = document.createElement("td");
+      cell.textContent = value || "-";
+      row.appendChild(cell);
+      return cell;
+    }
+
+    function renderMembers(result) {
+      rows.replaceChildren();
+      result.items.forEach(function (member) {
+        var row = document.createElement("tr");
+        var idCell = document.createElement("td");
+        var link = document.createElement("button");
+        link.type = "button";
+        link.className = "member-link";
+        link.textContent = member.memberId;
+        link.addEventListener("click", function () {
+          openMember(member.memberId, link);
+        });
+        idCell.appendChild(link);
+        row.appendChild(idCell);
+
+        appendCell(row, member.fullname);
+        appendCell(row, member.phone);
+        appendCell(row, member.orgName);
+
+        var statusCell = document.createElement("td");
+        var status = document.createElement("span");
+        status.className = "status " + (
+          member.status === "ใช้งาน" ? "status-active" : "status-suspended"
+        );
+        status.textContent = member.status;
+        statusCell.appendChild(status);
+        row.appendChild(statusCell);
+
+        appendCell(row, formatDate(member.createdAt));
+        rows.appendChild(row);
+      });
+
+      emptyState.classList.toggle("visible", result.items.length === 0);
+      state.page = result.page;
+      state.totalPages = result.totalPages;
+      pageSummary.textContent = result.total
+        ? "หน้า " + result.page + " จาก " + result.totalPages + " · ทั้งหมด " + result.total + " รายการ"
+        : "ไม่มีข้อมูล";
+      previousButton.disabled = result.page <= 1;
+      nextButton.disabled = result.page >= result.totalPages;
+    }
+
+    async function loadMembers() {
+      if (state.loading) return;
+      state.loading = true;
+      clearAdminError();
+      pageSummary.textContent = "กำลังโหลด...";
+      previousButton.disabled = true;
+      nextButton.disabled = true;
+      try {
+        var result = await callServer("listMembers", {
+          search: state.search,
+          status: state.status,
+          page: state.page,
+          pageSize: state.pageSize
+        });
+        if (!result || !result.ok) {
+          showAdminError(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+        renderMembers(result);
+      } catch (error) {
+        showAdminError(errorMessages.SYSTEM_ERROR);
+      } finally {
+        state.loading = false;
+      }
+    }
+
+    function setEditError(field, message) {
+      var inputMap = {
+        fullname: "editFullname",
+        phone: "editPhone",
+        orgType: "editOrgType",
+        orgName: "editOrgName",
+        reason: "statusReason"
+      };
+      var input = document.getElementById(inputMap[field]);
+      var error = document.getElementById("editError-" + field);
+      if (!input || !error) return;
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      error.textContent = message || "";
+      error.classList.toggle("visible", Boolean(message));
+    }
+
+    function clearEditErrors() {
+      ["fullname", "phone", "orgType", "orgName", "reason"].forEach(function (field) {
+        setEditError(field, "");
+      });
+      var modalAlert = document.getElementById("modalAlert");
+      modalAlert.textContent = "";
+      modalAlert.classList.remove("visible");
+    }
+
+    function showModalError(message) {
+      var modalAlert = document.getElementById("modalAlert");
+      modalAlert.textContent = message;
+      modalAlert.classList.add("visible");
+    }
+
+    function populateModal(member) {
+      state.currentMember = member;
+      document.getElementById("editMemberId").value = member.memberId;
+      document.getElementById("displayEditMemberId").value = member.memberId;
+      document.getElementById("editFullname").value = member.fullname;
+      document.getElementById("editPhone").value = member.phone;
+      document.getElementById("editOrgType").value = member.orgType;
+      document.getElementById("editOrgName").value = member.orgName;
+      document.getElementById("displayStatus").value = member.status;
+      document.getElementById("statusReason").value = member.suspensionReason || "";
+      document.getElementById("pinStatusText").textContent = member.hasPin
+        ? (member.mustChangePin ? "สมาชิกต้องเปลี่ยน PIN ชั่วคราว" : "สมาชิกมี PIN แล้ว")
+        : "สมาชิกเดิมยังไม่มี PIN";
+      document.getElementById("temporaryPinPanel").classList.remove("visible");
+      document.getElementById("temporaryPinValue").textContent = "";
+
+      var isActive = member.status === "ใช้งาน";
+      reasonField.style.display = isActive ? "block" : "none";
+      statusButton.textContent = isActive ? "ระงับสมาชิก" : "เปิดใช้งาน";
+      statusButton.className = "button " + (isActive ? "button-danger" : "button-primary");
+    }
+
+    async function openMember(memberId, trigger) {
+      lastFocusedElement = trigger;
+      clearEditErrors();
+      try {
+        var result = await callServer("getMember", memberId);
+        if (!result || !result.ok) {
+          showToast(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR, true);
+          return;
+        }
+        populateModal(result.member);
+        modal.classList.add("visible");
+        document.body.style.overflow = "hidden";
+        document.getElementById("editFullname").focus();
+      } catch (error) {
+        showToast(errorMessages.SYSTEM_ERROR, true);
+      }
+    }
+
+    function closeModal() {
+      modal.classList.remove("visible");
+      document.body.style.overflow = "";
+      state.currentMember = null;
+      if (lastFocusedElement) lastFocusedElement.focus();
+    }
+
+    function editPayload() {
+      return {
+        memberId: document.getElementById("editMemberId").value,
+        fullname: document.getElementById("editFullname").value.trim(),
+        phone: document.getElementById("editPhone").value.trim(),
+        orgType: document.getElementById("editOrgType").value,
+        orgName: document.getElementById("editOrgName").value.trim()
+      };
+    }
+
+    function setModalLoading(loading) {
+      document.getElementById("saveButton").disabled = loading;
+      statusButton.disabled = loading;
+    }
+
+    editForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      clearEditErrors();
+      setModalLoading(true);
+      try {
+        var result = await callServer("updateMember", editPayload());
+        if (!result || !result.ok) {
+          if (result && result.fields) {
+            Object.keys(result.fields).forEach(function (field) {
+              setEditError(field, result.fields[field]);
+            });
+          }
+          showModalError(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+        populateModal(result.member);
+        showToast("บันทึกข้อมูลสมาชิกแล้ว", false);
+        await loadMembers();
+      } catch (error) {
+        showModalError(errorMessages.SYSTEM_ERROR);
+      } finally {
+        setModalLoading(false);
+      }
+    });
+
+    statusButton.addEventListener("click", async function () {
+      if (!state.currentMember) return;
+      clearEditErrors();
+      var targetStatus = state.currentMember.status === "ใช้งาน" ? "ระงับ" : "ใช้งาน";
+      var reason = document.getElementById("statusReason").value.trim();
+      if (targetStatus === "ระงับ" && !reason) {
+        setEditError("reason", "กรุณาระบุเหตุผลที่ระงับสมาชิก");
+        document.getElementById("statusReason").focus();
+        return;
+      }
+
+      setModalLoading(true);
+      try {
+        var result = await callServer("setMemberStatus", {
+          memberId: state.currentMember.memberId,
+          status: targetStatus,
+          reason: reason
+        });
+        if (!result || !result.ok) {
+          if (result && result.fields && result.fields.reason) {
+            setEditError("reason", result.fields.reason);
+          }
+          showModalError(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+        populateModal(result.member);
+        showToast(targetStatus === "ระงับ" ? "ระงับสมาชิกแล้ว" : "เปิดใช้งานสมาชิกแล้ว", false);
+        await loadMembers();
+      } catch (error) {
+        showModalError(errorMessages.SYSTEM_ERROR);
+      } finally {
+        setModalLoading(false);
+      }
+    });
+
+    document.getElementById("resetPinButton").addEventListener("click", async function () {
+      if (!state.currentMember) return;
+      var button = this;
+      button.disabled = true;
+      clearEditErrors();
+      try {
+        var result = await callServer("resetMemberPin", state.currentMember.memberId);
+        if (!result || !result.ok) {
+          showModalError(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+        document.getElementById("temporaryPinValue").textContent = result.temporaryPin;
+        document.getElementById("temporaryPinPanel").classList.add("visible");
+        document.getElementById("pinStatusText").textContent = "สมาชิกต้องเปลี่ยน PIN ชั่วคราว";
+        state.currentMember.mustChangePin = true;
+        showToast("สร้าง PIN ชั่วคราวแล้ว", false);
+        await loadMembers();
+      } catch (error) {
+        showModalError(errorMessages.SYSTEM_ERROR);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("copyTemporaryPinButton").addEventListener("click", async function () {
+      try {
+        await navigator.clipboard.writeText(
+          document.getElementById("temporaryPinValue").textContent
+        );
+        this.textContent = "คัดลอกแล้ว";
+      } catch (error) {
+        this.textContent = "คัดลอกไม่สำเร็จ";
+      }
+    });
+
+    document.getElementById("searchInput").addEventListener("input", function () {
+      window.clearTimeout(searchTimer);
+      var value = this.value.trim();
+      searchTimer = window.setTimeout(function () {
+        state.search = value;
+        state.page = 1;
+        loadMembers();
+      }, 300);
+    });
+
+    document.getElementById("statusFilter").addEventListener("change", function () {
+      state.status = this.value;
+      state.page = 1;
+      loadMembers();
+    });
+
+    previousButton.addEventListener("click", function () {
+      if (state.page > 1) {
+        state.page -= 1;
+        loadMembers();
+      }
+    });
+
+    nextButton.addEventListener("click", function () {
+      if (state.page < state.totalPages) {
+        state.page += 1;
+        loadMembers();
+      }
+    });
+
+    document.getElementById("exportButton").addEventListener("click", async function () {
+      var button = this;
+      button.disabled = true;
+      try {
+        var result = await callServer("exportMembers", {
+          search: state.search,
+          status: state.status
+        });
+        if (!result || !result.ok) {
+          showAdminError(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+        var blob = new Blob([result.content], { type: result.mimeType });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast("ดาวน์โหลด CSV แล้ว", false);
+      } catch (error) {
+        showAdminError(errorMessages.SYSTEM_ERROR);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("closeModalButton").addEventListener("click", closeModal);
+    document.getElementById("cancelButton").addEventListener("click", closeModal);
+    modal.addEventListener("click", function (event) {
+      if (event.target === modal) closeModal();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && modal.classList.contains("visible")) closeModal();
+    });
+
+    async function initialize() {
+      try {
+        var session = await callServer("getAdminSession");
+        if (!session || !session.ok) {
+          showAdminError(errorMessages[session && session.code] || errorMessages.UNAUTHORIZED);
+          return;
+        }
+        document.getElementById("adminEmail").textContent = session.email;
+        await loadMembers();
+      } catch (error) {
+        showAdminError(errorMessages.SYSTEM_ERROR);
+      }
+    }
+
+    initialize();
+  }());
+</script>

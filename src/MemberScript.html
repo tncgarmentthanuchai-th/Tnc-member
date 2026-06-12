@@ -1,0 +1,158 @@
+<script>
+  (function () {
+    "use strict";
+    var storageKey = "tncMemberSession";
+    var token = sessionStorage.getItem(storageKey) || "";
+    var loginView = document.getElementById("loginView");
+    var accountView = document.getElementById("accountView");
+    var loginAlert = document.getElementById("loginAlert");
+    var accountAlert = document.getElementById("accountAlert");
+    var currentPhone = "";
+
+    function callServer(name, argument) {
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+        runner[name](argument);
+      });
+    }
+
+    function showAlert(element, message) {
+      element.textContent = message;
+      element.classList.add("visible");
+    }
+
+    function clearAlert(element) {
+      element.textContent = "";
+      element.classList.remove("visible");
+    }
+
+    function logout(message) {
+      sessionStorage.removeItem(storageKey);
+      token = "";
+      accountView.hidden = true;
+      loginView.hidden = false;
+      document.getElementById("loginForm").reset();
+      if (message) showAlert(loginAlert, message);
+    }
+
+    function renderAccount(result) {
+      var member = result.member;
+      currentPhone = member.phone;
+      loginView.hidden = true;
+      accountView.hidden = false;
+      document.getElementById("accountGreeting").textContent = member.fullname;
+      document.getElementById("accountMemberId").textContent = member.memberId;
+      document.getElementById("accountStatus").textContent = member.status;
+      document.getElementById("accountFullname").value = member.fullname;
+      document.getElementById("accountPhone").value = member.phone;
+      document.getElementById("accountOrgType").value = member.orgType;
+      document.getElementById("accountOrgName").value = member.orgName;
+      document.getElementById("profileSection").hidden = result.mustChangePin;
+      document.getElementById("changePinTitle").textContent = result.mustChangePin
+        ? "ต้องเปลี่ยน PIN ชั่วคราวก่อนใช้งาน"
+        : "เปลี่ยน PIN";
+    }
+
+    async function loadAccount() {
+      if (!token) return;
+      try {
+        var result = await callServer("getMemberAccount", token);
+        if (!result || !result.ok) {
+          logout("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+          return;
+        }
+        renderAccount(result);
+      } catch (error) {
+        logout("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่");
+      }
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      clearAlert(loginAlert);
+      var button = document.getElementById("loginButton");
+      button.disabled = true;
+      try {
+        var result = await callServer("loginMember", {
+          phone: document.getElementById("loginPhone").value,
+          pin: document.getElementById("loginPin").value
+        });
+        if (!result || !result.ok) {
+          showAlert(loginAlert, result && result.code === "LOGIN_BLOCKED"
+            ? "ลองเข้าสู่ระบบมากเกินไป กรุณารอ 30 นาที"
+            : "เบอร์โทรศัพท์หรือ PIN ไม่ถูกต้อง");
+          return;
+        }
+        token = result.token;
+        sessionStorage.setItem(storageKey, token);
+        renderAccount(result);
+      } catch (error) {
+        showAlert(loginAlert, "ระบบขัดข้องชั่วคราว กรุณาลองใหม่");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("profileForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      clearAlert(accountAlert);
+      try {
+        var phone = document.getElementById("accountPhone").value.trim();
+        var result = await callServer("updateMemberAccount", {
+          token: token,
+          fullname: document.getElementById("accountFullname").value.trim(),
+          phone: phone,
+          orgType: document.getElementById("accountOrgType").value,
+          orgName: document.getElementById("accountOrgName").value.trim(),
+          currentPin: document.getElementById("profileCurrentPin").value
+        });
+        if (!result || !result.ok) {
+          showAlert(accountAlert, result && result.code === "DUPLICATE_PHONE"
+            ? "เบอร์โทรศัพท์นี้ถูกใช้งานแล้ว"
+            : "ตรวจสอบข้อมูลและ PIN ปัจจุบันแล้วลองใหม่");
+          return;
+        }
+        if (result.phoneChanged) {
+          logout("เปลี่ยนเบอร์สำเร็จ กรุณาเข้าสู่ระบบด้วยเบอร์ใหม่");
+          return;
+        }
+        renderAccount({ member: result.member, mustChangePin: false });
+        showAlert(accountAlert, "บันทึกข้อมูลแล้ว");
+      } catch (error) {
+        showAlert(accountAlert, "ระบบขัดข้องชั่วคราว กรุณาลองใหม่");
+      }
+    });
+
+    document.getElementById("pinForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      clearAlert(accountAlert);
+      var newPin = document.getElementById("newPin").value;
+      var confirmPin = document.getElementById("confirmNewPin").value;
+      if (!/^\d{6}$/.test(newPin) || newPin !== confirmPin) {
+        showAlert(accountAlert, "PIN ใหม่ต้องเป็นตัวเลข 6 หลักและตรงกัน");
+        return;
+      }
+      try {
+        var result = await callServer("changeMemberPin", {
+          token: token,
+          currentPin: document.getElementById("currentPin").value,
+          newPin: newPin,
+          confirmPin: confirmPin
+        });
+        if (!result || !result.ok) {
+          showAlert(accountAlert, "PIN ปัจจุบันไม่ถูกต้อง");
+          return;
+        }
+        logout("เปลี่ยน PIN สำเร็จ กรุณาเข้าสู่ระบบใหม่");
+      } catch (error) {
+        showAlert(accountAlert, "ระบบขัดข้องชั่วคราว กรุณาลองใหม่");
+      }
+    });
+
+    document.getElementById("logoutButton").addEventListener("click", function () {
+      logout("");
+    });
+
+    loadAccount();
+  }());
+</script>

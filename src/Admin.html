@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include("Styles"); ?>
+</head>
+<body>
+  <div class="admin-page">
+    <header class="admin-header">
+      <div class="admin-header-inner">
+        <div>
+          <div class="brand">TNC<span class="brand-accent">.</span>GARMENT</div>
+          <p class="eyebrow">MEMBER ADMINISTRATION</p>
+        </div>
+        <div id="adminEmail" class="admin-user">กำลังตรวจสอบสิทธิ์...</div>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <div class="page-heading">
+        <h1>จัดการสมาชิก</h1>
+        <p>ค้นหา แก้ไขสถานะ และส่งออกข้อมูลสมาชิก</p>
+      </div>
+
+      <div class="toolbar" role="search">
+        <div>
+          <label class="sr-only" for="searchInput">ค้นหาสมาชิก</label>
+          <input id="searchInput" type="search" placeholder="ค้นหารหัส ชื่อ เบอร์โทร หรือองค์กร">
+        </div>
+        <div>
+          <label class="sr-only" for="statusFilter">กรองสถานะ</label>
+          <select id="statusFilter">
+            <option value="">ทุกสถานะ</option>
+            <option value="ใช้งาน">ใช้งาน</option>
+            <option value="ระงับ">ระงับ</option>
+          </select>
+        </div>
+        <button id="exportButton" class="button button-primary" type="button">ส่งออก CSV</button>
+      </div>
+
+      <div id="adminAlert" class="alert alert-error" role="alert"></div>
+
+      <section class="data-panel" aria-labelledby="memberTableTitle">
+        <h2 id="memberTableTitle" class="sr-only">รายชื่อสมาชิก</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">รหัสสมาชิก</th>
+                <th scope="col">ชื่อ-นามสกุล</th>
+                <th scope="col">เบอร์โทรศัพท์</th>
+                <th scope="col">องค์กร</th>
+                <th scope="col">สถานะ</th>
+                <th scope="col">วันที่สมัคร</th>
+              </tr>
+            </thead>
+            <tbody id="memberRows"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state">ไม่พบข้อมูลสมาชิกตามเงื่อนไขนี้</div>
+        <div class="pagination">
+          <span id="pageSummary">กำลังโหลด...</span>
+          <div class="pagination-actions">
+            <button id="previousButton" class="button button-secondary" type="button">ก่อนหน้า</button>
+            <button id="nextButton" class="button button-secondary" type="button">ถัดไป</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="memberModal" class="modal-backdrop" role="presentation">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-header">
+        <h2 id="modalTitle">ข้อมูลสมาชิก</h2>
+        <button id="closeModalButton" class="modal-close" type="button" aria-label="ปิดหน้าต่าง">×</button>
+      </header>
+
+      <form id="editForm" novalidate>
+        <div class="modal-body">
+          <input id="editMemberId" type="hidden">
+          <div id="modalAlert" class="alert alert-error" role="alert"></div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="editFullname">ชื่อ-นามสกุล <span class="required">*</span></label>
+              <input id="editFullname" type="text" maxlength="120" required>
+              <p id="editError-fullname" class="field-error"></p>
+            </div>
+            <div class="field">
+              <label for="editPhone">เบอร์โทรศัพท์ <span class="required">*</span></label>
+              <input id="editPhone" type="tel" maxlength="14" inputmode="numeric" required>
+              <p id="editError-phone" class="field-error"></p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="editOrgType">ประเภทองค์กร <span class="required">*</span></label>
+              <select id="editOrgType" required>
+                <option value="">เลือกประเภทองค์กร</option>
+                <option value="สถานศึกษา">สถานศึกษา</option>
+                <option value="หน่วยงานภาครัฐ">หน่วยงานภาครัฐ</option>
+                <option value="หน่วยงานเอกชน">หน่วยงานเอกชน</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+              </select>
+              <p id="editError-orgType" class="field-error"></p>
+            </div>
+            <div class="field">
+              <label for="editOrgName">ชื่อองค์กร <span class="required">*</span></label>
+              <input id="editOrgName" type="text" maxlength="160" required>
+              <p id="editError-orgName" class="field-error"></p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>รหัสสมาชิก</label>
+              <input id="displayEditMemberId" type="text" readonly>
+            </div>
+            <div class="field">
+              <label>สถานะปัจจุบัน</label>
+              <input id="displayStatus" type="text" readonly>
+            </div>
+          </div>
+
+          <div id="statusActions" class="status-actions">
+            <div id="reasonField" class="field">
+              <label for="statusReason">เหตุผลที่ระงับ <span class="required">*</span></label>
+              <textarea id="statusReason" maxlength="300"></textarea>
+              <p id="editError-reason" class="field-error"></p>
+            </div>
+            <button id="statusButton" class="button button-danger" type="button">ระงับสมาชิก</button>
+          </div>
+
+          <div class="account-section">
+            <h2>การเข้าสู่ระบบสมาชิก</h2>
+            <p id="pinStatusText" class="success-note"></p>
+            <button id="resetPinButton" class="button button-secondary" type="button">ออก PIN ชั่วคราว</button>
+            <div id="temporaryPinPanel" class="temporary-pin-panel">
+              <strong>PIN ชั่วคราว (แสดงครั้งเดียว)</strong>
+              <div id="temporaryPinValue" class="temporary-pin-value"></div>
+              <button id="copyTemporaryPinButton" class="button button-secondary" type="button">คัดลอก PIN</button>
+            </div>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button id="cancelButton" class="button button-secondary" type="button">ยกเลิก</button>
+          <button id="saveButton" class="button button-primary" type="submit">บันทึกข้อมูล</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <?!= include("AdminScript"); ?>
+</body>
+</html>

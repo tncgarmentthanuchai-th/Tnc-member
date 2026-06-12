@@ -1,0 +1,158 @@
+<script>
+  (function () {
+    "use strict";
+
+    var form = document.getElementById("memberForm");
+    var submitButton = document.getElementById("submitButton");
+    var formAlert = document.getElementById("formAlert");
+    var formView = document.getElementById("formView");
+    var successView = document.getElementById("successView");
+    var memberId = document.getElementById("memberId");
+    var successTitle = document.getElementById("successTitle");
+    var successMessage = document.getElementById("successMessage");
+
+    var errorMessages = {
+      VALIDATION_ERROR: "กรุณาตรวจสอบข้อมูลที่กรอก",
+      SYSTEM_ERROR: "ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง"
+    };
+
+    function callServer(functionName, argument) {
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject);
+        runner[functionName](argument);
+      });
+    }
+
+    function payloadFromForm() {
+      return {
+        fullname: document.getElementById("fullname").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        orgType: document.getElementById("orgType").value,
+        orgName: document.getElementById("orgName").value.trim(),
+        pin: document.getElementById("pin").value,
+        pinConfirm: document.getElementById("pinConfirm").value
+      };
+    }
+
+    function setFieldError(field, message) {
+      var input = document.getElementById(field);
+      var error = document.getElementById("error-" + field);
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      input.setAttribute("aria-describedby", message ? error.id : "");
+      error.textContent = message || "";
+      error.classList.toggle("visible", Boolean(message));
+    }
+
+    function clearErrors() {
+      ["fullname", "phone", "orgType", "orgName", "pin", "pinConfirm"].forEach(function (field) {
+        setFieldError(field, "");
+      });
+      formAlert.textContent = "";
+      formAlert.classList.remove("visible");
+    }
+
+    function validateClient(payload) {
+      var fields = {};
+      if (!payload.fullname || payload.fullname.length > 120) {
+        fields.fullname = "กรุณากรอกชื่อ-นามสกุล";
+      }
+      if (!/^0\d{8,9}$/.test(payload.phone.replace(/\D/g, ""))) {
+        fields.phone = "กรุณากรอกเบอร์โทรศัพท์ไทย 9-10 หลัก";
+      }
+      if (!payload.orgType) fields.orgType = "กรุณาเลือกประเภทองค์กร";
+      if (!payload.orgName || payload.orgName.length > 160) {
+        fields.orgName = "กรุณากรอกชื่อองค์กร";
+      }
+      if (!/^\d{6}$/.test(payload.pin)) {
+        fields.pin = "PIN ต้องเป็นตัวเลข 6 หลัก";
+      }
+      if (payload.pinConfirm !== payload.pin) {
+        fields.pinConfirm = "PIN ทั้งสองช่องไม่ตรงกัน";
+      }
+      return fields;
+    }
+
+    function setLoading(loading) {
+      submitButton.disabled = loading;
+      submitButton.replaceChildren();
+      if (loading) {
+        var spinner = document.createElement("span");
+        spinner.className = "spinner";
+        spinner.setAttribute("aria-hidden", "true");
+        submitButton.appendChild(spinner);
+        submitButton.appendChild(document.createTextNode("กำลังบันทึก..."));
+      } else {
+        submitButton.textContent = "สมัครสมาชิก";
+      }
+    }
+
+    function showAlert(message) {
+      formAlert.textContent = message;
+      formAlert.classList.add("visible");
+      formAlert.focus();
+    }
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      clearErrors();
+      var payload = payloadFromForm();
+      var fields = validateClient(payload);
+      if (Object.keys(fields).length) {
+        Object.keys(fields).forEach(function (field) {
+          setFieldError(field, fields[field]);
+        });
+        document.getElementById(Object.keys(fields)[0]).focus();
+        return;
+      }
+
+      setLoading(true);
+      try {
+        var result = await callServer("registerMember", payload);
+        if (!result || !result.ok) {
+          if (result && result.fields) {
+            Object.keys(result.fields).forEach(function (field) {
+              setFieldError(field, result.fields[field]);
+            });
+          }
+          showAlert(errorMessages[result && result.code] || errorMessages.SYSTEM_ERROR);
+          return;
+        }
+
+        memberId.textContent = result.memberId;
+        successTitle.textContent = result.existing
+          ? "คุณเป็นสมาชิกอยู่แล้ว"
+          : "สมัครสมาชิกสำเร็จ";
+        successMessage.textContent = result.existing
+          ? "ระบบพบเบอร์โทรศัพท์นี้และแสดงรหัสสมาชิกเดิม"
+          : "ขอบคุณที่เป็นส่วนหนึ่งของ TNC Garment";
+        formView.classList.add("hidden");
+        successView.classList.add("visible");
+        successView.focus();
+      } catch (error) {
+        showAlert(errorMessages.SYSTEM_ERROR);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    document.getElementById("copyButton").addEventListener("click", async function () {
+      try {
+        await navigator.clipboard.writeText(memberId.textContent);
+        this.textContent = "คัดลอกแล้ว";
+      } catch (error) {
+        this.textContent = "คัดลอกไม่สำเร็จ";
+      }
+    });
+
+    document.getElementById("newButton").addEventListener("click", function () {
+      form.reset();
+      clearErrors();
+      successView.classList.remove("visible");
+      formView.classList.remove("hidden");
+      document.getElementById("fullname").focus();
+      document.getElementById("copyButton").textContent = "คัดลอกรหัส";
+    });
+  }());
+</script>

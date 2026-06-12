@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include("Styles"); ?>
+</head>
+<body>
+  <main class="public-page">
+    <section class="public-card" aria-labelledby="memberPageTitle">
+      <header class="public-header">
+        <div class="brand">TNC<span class="brand-accent">.</span>GARMENT</div>
+        <p class="eyebrow">MEMBER ACCOUNT</p>
+      </header>
+
+      <div class="public-body">
+        <div id="loginView">
+          <div class="intro">
+            <h1 id="memberPageTitle">เข้าสู่ระบบสมาชิก</h1>
+            <p>ใช้เบอร์โทรศัพท์และ PIN 6 หลักที่ตั้งไว้</p>
+          </div>
+          <div id="loginAlert" class="alert alert-error" role="alert"></div>
+          <form id="loginForm" novalidate>
+            <div class="field">
+              <label for="loginPhone">เบอร์โทรศัพท์</label>
+              <input id="loginPhone" type="tel" maxlength="14" inputmode="numeric" autocomplete="tel" required>
+            </div>
+            <div class="field">
+              <label for="loginPin">PIN 6 หลัก</label>
+              <input id="loginPin" type="password" maxlength="6" inputmode="numeric" autocomplete="current-password" required>
+            </div>
+            <button id="loginButton" class="button button-primary button-block" type="submit">เข้าสู่ระบบ</button>
+            <p class="success-note">ลืม PIN กรุณาติดต่อแอดมินเพื่อขอ PIN ชั่วคราว</p>
+            <a class="member-portal-link" href="?">กลับหน้าสมัครสมาชิก</a>
+          </form>
+        </div>
+
+        <div id="accountView" hidden>
+          <div class="account-header-actions">
+            <button id="logoutButton" class="button button-secondary" type="button">ออกจากระบบ</button>
+          </div>
+          <div class="intro">
+            <h1>บัญชีสมาชิก</h1>
+            <p id="accountGreeting"></p>
+          </div>
+          <div id="accountAlert" class="alert alert-error" role="alert"></div>
+
+          <div class="account-summary">
+            <div class="account-summary-item">
+              <div class="account-summary-label">รหัสสมาชิก</div>
+              <div id="accountMemberId" class="account-summary-value"></div>
+            </div>
+            <div class="account-summary-item">
+              <div class="account-summary-label">สถานะ</div>
+              <div id="accountStatus" class="account-summary-value"></div>
+            </div>
+          </div>
+
+          <section id="profileSection" class="account-section">
+            <h2>ข้อมูลส่วนตัว</h2>
+            <form id="profileForm">
+              <div class="field">
+                <label for="accountFullname">ชื่อ-นามสกุล</label>
+                <input id="accountFullname" type="text" maxlength="120" required>
+              </div>
+              <div class="field">
+                <label for="accountPhone">เบอร์โทรศัพท์</label>
+                <input id="accountPhone" type="tel" maxlength="14" inputmode="numeric" required>
+              </div>
+              <div class="field">
+                <label for="accountOrgType">ประเภทองค์กร</label>
+                <select id="accountOrgType" required>
+                  <option value="สถานศึกษา">สถานศึกษา</option>
+                  <option value="หน่วยงานภาครัฐ">หน่วยงานภาครัฐ</option>
+                  <option value="หน่วยงานเอกชน">หน่วยงานเอกชน</option>
+                  <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="accountOrgName">ชื่อองค์กร</label>
+                <input id="accountOrgName" type="text" maxlength="160" required>
+              </div>
+              <div class="field">
+                <label for="profileCurrentPin">PIN ปัจจุบัน (จำเป็นเมื่อเปลี่ยนเบอร์)</label>
+                <input id="profileCurrentPin" type="password" maxlength="6" inputmode="numeric" autocomplete="current-password">
+              </div>
+              <button class="button button-primary button-block" type="submit">บันทึกข้อมูล</button>
+            </form>
+          </section>
+
+          <section class="account-section">
+            <h2 id="changePinTitle">เปลี่ยน PIN</h2>
+            <form id="pinForm">
+              <div class="field">
+                <label for="currentPin">PIN ปัจจุบัน</label>
+                <input id="currentPin" type="password" maxlength="6" inputmode="numeric" autocomplete="current-password" required>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="newPin">PIN ใหม่</label>
+                  <input id="newPin" type="password" maxlength="6" inputmode="numeric" autocomplete="new-password" required>
+                </div>
+                <div class="field">
+                  <label for="confirmNewPin">ยืนยัน PIN ใหม่</label>
+                  <input id="confirmNewPin" type="password" maxlength="6" inputmode="numeric" autocomplete="new-password" required>
+                </div>
+              </div>
+              <button class="button button-primary button-block" type="submit">เปลี่ยน PIN</button>
+            </form>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+  <?!= include("MemberScript"); ?>
+</body>
+</html>

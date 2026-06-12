@@ -1,0 +1,6 @@
+node_modules/**
+tests/**
+docs/**
+package.json
+package-lock.json
+.clasp.json.example

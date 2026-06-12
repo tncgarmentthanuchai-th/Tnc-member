@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include("Styles"); ?>
+</head>
+<body>
+  <main class="public-page">
+    <section class="public-card" aria-labelledby="pageTitle">
+      <header class="public-header">
+        <div class="brand">TNC<span class="brand-accent">.</span>GARMENT</div>
+        <p class="eyebrow">MEMBER REGISTRATION</p>
+      </header>
+
+      <div class="public-body">
+        <div id="formView" class="form-view">
+          <div class="intro">
+            <h1 id="pageTitle">สมัครสมาชิก</h1>
+            <p>กรอกข้อมูลเพื่อรับรหัสสมาชิก TNC Garment</p>
+          </div>
+
+          <div id="formAlert" class="alert alert-error" role="alert"></div>
+
+          <form id="memberForm" novalidate>
+            <div class="field">
+              <label for="fullname">ชื่อ-นามสกุล <span class="required">*</span></label>
+              <input id="fullname" name="fullname" type="text" maxlength="120" autocomplete="name" required>
+              <p id="error-fullname" class="field-error"></p>
+            </div>
+
+            <div class="field">
+              <label for="phone">เบอร์โทรศัพท์ <span class="required">*</span></label>
+              <input id="phone" name="phone" type="tel" maxlength="14" inputmode="numeric" autocomplete="tel" placeholder="081-234-5678" required>
+              <p id="error-phone" class="field-error"></p>
+            </div>
+
+            <div class="field">
+              <label for="orgType">ประเภทองค์กร <span class="required">*</span></label>
+              <select id="orgType" name="orgType" required>
+                <option value="">เลือกประเภทองค์กร</option>
+                <option value="สถานศึกษา">สถานศึกษา</option>
+                <option value="หน่วยงานภาครัฐ">หน่วยงานภาครัฐ</option>
+                <option value="หน่วยงานเอกชน">หน่วยงานเอกชน</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+              </select>
+              <p id="error-orgType" class="field-error"></p>
+            </div>
+
+            <div class="field">
+              <label for="orgName">ชื่อองค์กร <span class="required">*</span></label>
+              <input id="orgName" name="orgName" type="text" maxlength="160" autocomplete="organization" required>
+              <p id="error-orgName" class="field-error"></p>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="pin">ตั้ง PIN 6 หลัก <span class="required">*</span></label>
+                <input id="pin" name="pin" type="password" maxlength="6" inputmode="numeric" autocomplete="new-password" required>
+                <p id="error-pin" class="field-error"></p>
+              </div>
+              <div class="field">
+                <label for="pinConfirm">ยืนยัน PIN <span class="required">*</span></label>
+                <input id="pinConfirm" name="pinConfirm" type="password" maxlength="6" inputmode="numeric" autocomplete="new-password" required>
+                <p id="error-pinConfirm" class="field-error"></p>
+              </div>
+            </div>
+
+            <button id="submitButton" class="button button-primary button-block" type="submit">
+              สมัครสมาชิก
+            </button>
+            <a class="member-portal-link" href="?page=member">เป็นสมาชิกแล้ว? เข้าสู่ระบบ</a>
+          </form>
+        </div>
+
+        <div id="successView" class="success-view" tabindex="-1">
+          <div class="success-icon" aria-hidden="true">✓</div>
+          <h1 id="successTitle">สมัครสมาชิกสำเร็จ</h1>
+          <p id="successMessage">ขอบคุณที่เป็นส่วนหนึ่งของ TNC Garment</p>
+
+          <div class="member-id-panel">
+            <div class="member-id-label">รหัสสมาชิกของคุณ</div>
+            <div id="memberId" class="member-id-value"></div>
+            <div class="success-actions">
+              <button id="copyButton" class="button button-secondary" type="button">คัดลอกรหัส</button>
+              <button id="newButton" class="button button-secondary" type="button">สมัครอีกครั้ง</button>
+            </div>
+          </div>
+
+          <p class="success-note">โปรดเก็บรหัสสมาชิกไว้ หรือติดต่อแอดมินโดยแจ้งเบอร์โทรศัพท์ที่ใช้สมัคร</p>
+          <a class="member-portal-link" href="?page=member">เข้าสู่บัญชีสมาชิก</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <?!= include("PublicScript"); ?>
+</body>
+</html>
