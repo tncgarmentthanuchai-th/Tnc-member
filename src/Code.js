@@ -46,6 +46,10 @@ function getService() {
   return createMemberService(createSheetRepository());
 }
 
+function getOrderService() {
+  return createOrderService(createSheetRepository());
+}
+
 function getMemberSessionSecret_() {
   var properties = PropertiesService.getScriptProperties();
   var secret = properties.getProperty("MEMBER_SESSION_SECRET");
@@ -83,6 +87,24 @@ function safeAdminMember_(member) {
     hasPin: Boolean(member.pinHash),
     mustChangePin: String(member.mustChangePin) === "true" ||
       member.mustChangePin === true
+  };
+}
+
+function safeOrder_(order) {
+  var amount = Number(order.amount);
+  return {
+    orderId: order.orderId,
+    memberId: order.memberId,
+    memberName: order.memberName,
+    orderDate: order.orderDate,
+    amount: Number.isFinite(amount) ? amount : 0,
+    note: order.note || "",
+    status: order.status,
+    createdAt: order.createdAt,
+    createdBy: order.createdBy,
+    cancelledAt: order.cancelledAt || "",
+    cancelledBy: order.cancelledBy || "",
+    cancellationReason: order.cancellationReason || ""
   };
 }
 
@@ -163,6 +185,33 @@ function resetMemberPin(memberId) {
   });
 }
 
+function createOrder(payload) {
+  return withAdmin(function (email) {
+    return getOrderService().createOrder(payload || {}, email);
+  });
+}
+
+function cancelOrder(payload) {
+  return withAdmin(function (email) {
+    return getOrderService().cancelOrder(payload || {}, email);
+  });
+}
+
+function listMemberOrders(query) {
+  return withAdmin(function () {
+    var source = query || {};
+    var result = getOrderService().listMemberOrders(source.memberId, source);
+    if (result.ok) result.items = result.items.map(safeOrder_);
+    return result;
+  });
+}
+
+function rebuildMemberPoints(memberId) {
+  return withAdmin(function (email) {
+    return getOrderService().rebuildMemberPoints(memberId, email);
+  });
+}
+
 function loginMember(payload) {
   return runSafely(function () {
     ensureSystemReady_();
@@ -198,8 +247,21 @@ function getMemberAccount(token) {
       ok: true,
       mustChangePin: String(member.mustChangePin) === "true" ||
         member.mustChangePin === true,
-      member: getService().publicMember(member)
+      member: getService().publicMember(member),
+      benefits: getTierBenefits(member.tier || "Silver")
     };
+  });
+}
+
+function getMyOrders(payload) {
+  var source = payload || {};
+  return withMemberSession_(source.token, false, function (member) {
+    var result = getOrderService().listMemberOrders(member.memberId, {
+      page: source.page,
+      pageSize: source.pageSize
+    });
+    if (result.ok) result.items = result.items.map(safeOrder_);
+    return result;
   });
 }
 
@@ -262,4 +324,8 @@ function exportMembers(query) {
       content: toCsv(rows, true)
     };
   });
+}
+
+function reconcileAllMemberPoints_() {
+  return getOrderService().reconcileAllMemberPoints("SYSTEM");
 }

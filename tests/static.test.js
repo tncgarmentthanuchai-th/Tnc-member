@@ -268,12 +268,12 @@ test("reconciliation trigger is installed manually by bootstrap only", () => {
   )[1];
 
   assert.match(setupSource, /function installPointsReconciliationTrigger\(\)/);
-  assert.match(setupSource, /getHandlerFunction\(\)\s*===\s*"reconcileAllMemberPoints"/);
+  assert.match(setupSource, /getHandlerFunction\(\)\s*===\s*"reconcileAllMemberPoints_"/);
   assert.match(setupSource, /\.timeBased\(\)\s*\.everyDays\(1\)/);
   assert.doesNotMatch(setupBody, /installPointsReconciliationTrigger/);
   assert.doesNotMatch(readyBody, /installPointsReconciliationTrigger/);
-  assert.doesNotMatch(setupBody, /reconcileAllMemberPoints\s*\(/);
-  assert.doesNotMatch(readyBody, /reconcileAllMemberPoints\s*\(/);
+  assert.doesNotMatch(setupBody, /reconcileAllMemberPoints_?\s*\(/);
+  assert.doesNotMatch(readyBody, /reconcileAllMemberPoints_?\s*\(/);
   assert.match(bootstrapBody, /setupTncMemberSystem\(\)/);
   assert.match(bootstrapBody, /installPointsReconciliationTrigger\(\)/);
 });
@@ -476,7 +476,7 @@ function runTriggerInstaller(triggers) {
 
 test("trigger installer retains a sole valid trigger and preserves unrelated triggers", () => {
   const result = runTriggerInstaller([
-    { id: "valid", getHandlerFunction: () => "reconcileAllMemberPoints" },
+    { id: "valid", getHandlerFunction: () => "reconcileAllMemberPoints_" },
     { id: "unrelated", getHandlerFunction: () => "sendDigest" }
   ]);
 
@@ -490,9 +490,9 @@ test("trigger installer retains a sole valid trigger and preserves unrelated tri
 
 test("trigger installer retains one valid trigger and deletes only duplicates", () => {
   const result = runTriggerInstaller([
-    { id: "first", getHandlerFunction: () => "reconcileAllMemberPoints" },
+    { id: "first", getHandlerFunction: () => "reconcileAllMemberPoints_" },
     { id: "unrelated", getHandlerFunction: () => "sendDigest" },
-    { id: "second", getHandlerFunction: () => "reconcileAllMemberPoints" }
+    { id: "second", getHandlerFunction: () => "reconcileAllMemberPoints_" }
   ]);
 
   assert.deepEqual(result.deleted, ["second"]);
@@ -510,7 +510,7 @@ test("trigger installer creates a daily trigger when none exists", () => {
 
   assert.deepEqual(result.deleted, []);
   assert.deepEqual(result.created, [
-    ["newTrigger", "reconcileAllMemberPoints"],
+    ["newTrigger", "reconcileAllMemberPoints_"],
     "timeBased",
     ["everyDays", 1],
     "create"
@@ -594,4 +594,101 @@ test("MemberService Apps Script core adapter exposes phone normalization", () =>
 
   const adapter = vm.runInContext("getTncCore()", context);
   assert.equal(typeof adapter.normalizePhone, "function");
+});
+
+test("order admin APIs pass the authenticated actor to the service", () => {
+  const context = loadSource("Code.js");
+  const calls = [];
+  context.withAdmin = (callback) => callback("admin@example.com");
+  context.getOrderService = () => ({
+    createOrder(payload, actor) {
+      calls.push(["create", payload, actor]);
+      return { ok: true };
+    },
+    cancelOrder(payload, actor) {
+      calls.push(["cancel", payload, actor]);
+      return { ok: true };
+    },
+    listMemberOrders(memberId, query) {
+      calls.push(["list", memberId, query]);
+      return { ok: true, items: [] };
+    },
+    rebuildMemberPoints(memberId, actor) {
+      calls.push(["rebuild", memberId, actor]);
+      return { ok: true };
+    }
+  });
+
+  context.createOrder({ memberId: "TNC-000001" });
+  context.cancelOrder({ orderId: "ORD-000001" });
+  context.listMemberOrders({ memberId: "TNC-000001", page: 2 });
+  context.rebuildMemberPoints("TNC-000001");
+
+  assert.deepEqual(calls, [
+    ["create", { memberId: "TNC-000001" }, "admin@example.com"],
+    ["cancel", { orderId: "ORD-000001" }, "admin@example.com"],
+    ["list", "TNC-000001", { memberId: "TNC-000001", page: 2 }],
+    ["rebuild", "TNC-000001", "admin@example.com"]
+  ]);
+});
+
+test("member order history uses the session member and requires changed PIN", () => {
+  const context = loadSource("Code.js");
+  const captured = {};
+  context.withMemberSession_ = (token, allowMustChangePin, callback) => {
+    captured.token = token;
+    captured.allowMustChangePin = allowMustChangePin;
+    return callback({ memberId: "TNC-000001" });
+  };
+  context.getOrderService = () => ({
+    listMemberOrders(memberId, query) {
+      captured.memberId = memberId;
+      captured.query = query;
+      return { ok: true, items: [] };
+    }
+  });
+
+  const result = context.getMyOrders({
+    token: "signed-token",
+    memberId: "TNC-999999",
+    page: 2,
+    pageSize: 10
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(captured.token, "signed-token");
+  assert.equal(captured.allowMustChangePin, false);
+  assert.equal(captured.memberId, "TNC-000001");
+  assert.equal(captured.query.page, 2);
+  assert.equal(captured.query.pageSize, 10);
+  assert.equal("memberId" in captured.query, false);
+});
+
+test("member account includes tier benefits and reconciliation uses SYSTEM actor", () => {
+  const context = loadSource("Code.js");
+  let reconcileActor = "";
+  context.withMemberSession_ = (token, allowMustChangePin, callback) => callback({
+    memberId: "TNC-000001",
+    tier: "Gold",
+    mustChangePin: false
+  });
+  context.getService = () => ({
+    publicMember(member) {
+      return { memberId: member.memberId, tier: member.tier };
+    }
+  });
+  context.getTierBenefits = (tier) => ({ tier, discount: 8 });
+  context.getOrderService = () => ({
+    reconcileAllMemberPoints(actor) {
+      reconcileActor = actor;
+      return { ok: true, updated: 0 };
+    }
+  });
+
+  const account = context.getMemberAccount("token");
+  const reconciliation = context.reconcileAllMemberPoints_();
+
+  assert.deepEqual(account.benefits, { tier: "Gold", discount: 8 });
+  assert.equal(reconciliation.ok, true);
+  assert.equal(reconcileActor, "SYSTEM");
 });

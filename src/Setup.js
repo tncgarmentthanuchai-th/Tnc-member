@@ -140,10 +140,10 @@ function installPointsReconciliationTrigger() {
   lock.waitLock(30000);
   try {
     var matches = ScriptApp.getProjectTriggers().filter(function (trigger) {
-      return trigger.getHandlerFunction() === "reconcileAllMemberPoints";
+      return trigger.getHandlerFunction() === "reconcileAllMemberPoints_";
     });
     if (matches.length === 0) {
-      ScriptApp.newTrigger("reconcileAllMemberPoints")
+      ScriptApp.newTrigger("reconcileAllMemberPoints_")
         .timeBased()
         .everyDays(1)
         .create();
