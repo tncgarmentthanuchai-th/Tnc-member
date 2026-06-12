@@ -71,9 +71,58 @@ test("register creates an active member and audit record", () => {
   assert.equal(repository.members[0].pin, undefined);
   assert.equal(repository.members[0].sessionVersion, 1);
   assert.equal(repository.members[0].mustChangePin, false);
+  assert.equal(repository.members[0].points, 0);
+  assert.equal(repository.members[0].tier, "Silver");
+  assert.equal(repository.members[0].lastOrderAt, "");
+  assert.equal(result.points, undefined);
   assert.equal(repository.audits[0].action, "CREATE");
   assert.equal(repository.audits[0].after.includes("pinHash"), false);
   assert.equal(repository.audits[0].after.includes("pinSalt"), false);
+});
+
+test("publicMember exposes the member points summary", () => {
+  const repository = createMemoryRepository();
+  const service = createMemberService(repository);
+
+  const member = service.publicMember({
+    memberId: "TNC-000001",
+    fullname: "Member",
+    phone: "0812345678",
+    orgType: "Private",
+    orgName: "TNC",
+    status: MEMBER_STATUS.ACTIVE,
+    suspensionReason: "",
+    createdAt: "2026-06-11T10:00:00.000Z",
+    updatedAt: "2026-06-11T10:00:00.000Z",
+    points: "125",
+    tier: "Gold",
+    lastOrderAt: "2026-06-12T09:00:00.000Z",
+    pinHash: "secret"
+  });
+
+  assert.equal(member.points, 125);
+  assert.equal(member.tier, "Gold");
+  assert.equal(member.lastOrderAt, "2026-06-12T09:00:00.000Z");
+  assert.equal(member.pinHash, undefined);
+});
+
+test("publicMember normalizes points to a finite number", () => {
+  const repository = createMemoryRepository();
+  const service = createMemberService(repository);
+  const cases = [
+    { input: NaN, expected: 0 },
+    { input: Infinity, expected: 0 },
+    { input: -Infinity, expected: 0 },
+    { input: "not-points", expected: 0 },
+    { input: "125", expected: 125 },
+    { input: "-12.5", expected: -12.5 }
+  ];
+
+  cases.forEach(({ input, expected }) => {
+    const member = service.publicMember({ points: input });
+
+    assert.equal(member.points, expected);
+  });
 });
 
 test("register returns the original id for a duplicate phone", () => {

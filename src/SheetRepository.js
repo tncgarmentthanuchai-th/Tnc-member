@@ -12,7 +12,10 @@ var MEMBER_HEADERS = [
   "pinHash",
   "pinSalt",
   "sessionVersion",
-  "mustChangePin"
+  "mustChangePin",
+  "points",
+  "tier",
+  "lastOrderAt"
 ];
 
 var AUDIT_HEADERS = [
@@ -22,6 +25,21 @@ var AUDIT_HEADERS = [
   "actor",
   "before",
   "after"
+];
+
+var ORDER_HEADERS = [
+  "orderId",
+  "memberId",
+  "memberName",
+  "orderDate",
+  "amount",
+  "note",
+  "status",
+  "createdAt",
+  "createdBy",
+  "cancelledAt",
+  "cancelledBy",
+  "cancellationReason"
 ];
 
 function getConfiguredSpreadsheet() {

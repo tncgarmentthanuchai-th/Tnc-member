@@ -36,6 +36,11 @@ function createMemberService(repository, nowProvider) {
     return result;
   }
 
+  function normalizePoints(value) {
+    var points = Number(value);
+    return Number.isFinite(points) ? points : 0;
+  }
+
   function register(payload) {
     var validation = core.validateMemberPayload(payload);
     if (!validation.ok) return validation;
@@ -77,7 +82,10 @@ function createMemberService(repository, nowProvider) {
         pinHash: auth.hashPin(payload.pin, pinSalt),
         pinSalt: pinSalt,
         sessionVersion: 1,
-        mustChangePin: false
+        mustChangePin: false,
+        points: 0,
+        tier: "Silver",
+        lastOrderAt: ""
       };
       repository.insert(member);
       repository.audit({
@@ -109,7 +117,10 @@ function createMemberService(repository, nowProvider) {
       status: member.status,
       suspensionReason: member.suspensionReason || "",
       createdAt: member.createdAt,
-      updatedAt: member.updatedAt
+      updatedAt: member.updatedAt,
+      points: normalizePoints(member.points),
+      tier: member.tier || "Silver",
+      lastOrderAt: member.lastOrderAt || ""
     };
   }
 

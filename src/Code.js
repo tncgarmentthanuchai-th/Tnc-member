@@ -65,6 +65,7 @@ function getMemberSessionSecret_() {
 }
 
 function safeAdminMember_(member) {
+  var points = Number(member.points || 0);
   return {
     memberId: member.memberId,
     fullname: member.fullname,
@@ -76,6 +77,9 @@ function safeAdminMember_(member) {
     createdAt: member.createdAt,
     updatedAt: member.updatedAt,
     updatedBy: member.updatedBy,
+    points: isFinite(points) ? points : 0,
+    tier: member.tier || "Silver",
+    lastOrderAt: member.lastOrderAt || "",
     hasPin: Boolean(member.pinHash),
     mustChangePin: String(member.mustChangePin) === "true" ||
       member.mustChangePin === true
