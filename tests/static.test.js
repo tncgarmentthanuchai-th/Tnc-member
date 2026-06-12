@@ -742,3 +742,206 @@ test("member page contains points dashboard and order history controls", () => {
     "tier progress must use a native progress element"
   );
 });
+
+function createMemberLoginHarness() {
+  const elements = new Map();
+  const serverCalls = [];
+  let successHandler = () => {};
+  let failureHandler = () => {};
+
+  function createClassList() {
+    const classes = new Set();
+    return {
+      add(...names) {
+        names.forEach((name) => classes.add(name));
+      },
+      remove(...names) {
+        names.forEach((name) => classes.delete(name));
+      },
+      contains(name) {
+        return classes.has(name);
+      },
+      toggle(name, force) {
+        if (force === undefined ? !classes.has(name) : force) {
+          classes.add(name);
+          return true;
+        }
+        classes.delete(name);
+        return false;
+      }
+    };
+  }
+
+  function getElement(id) {
+    if (!elements.has(id)) {
+      const listeners = {};
+      elements.set(id, {
+        id,
+        value: "",
+        textContent: "",
+        className: "",
+        classList: createClassList(),
+        disabled: false,
+        hidden: false,
+        listeners,
+        addEventListener(type, handler) {
+          listeners[type] = handler;
+        },
+        appendChild() {},
+        replaceChildren() {},
+        reset() {},
+        focus() {},
+        setAttribute(name, value) {
+          if (name === "aria-invalid") {
+            this.ariaInvalid = value;
+          }
+        }
+      });
+    }
+    return elements.get(id);
+  }
+
+  const scriptRun = {
+    withSuccessHandler(handler) {
+      successHandler = handler;
+      return this;
+    },
+    withFailureHandler(handler) {
+      failureHandler = handler;
+      return this;
+    },
+    loginMember(payload) {
+      serverCalls.push({ name: "loginMember", payload });
+      successHandler({ ok: false });
+    }
+  };
+  const storage = new Map();
+  const context = {
+    console,
+    Intl,
+    Promise,
+    sessionStorage: {
+      getItem(key) {
+        return storage.get(key) || null;
+      },
+      setItem(key, value) {
+        storage.set(key, value);
+      },
+      removeItem(key) {
+        storage.delete(key);
+      }
+    },
+    document: {
+      body: { classList: createClassList() },
+      getElementById: getElement,
+      createElement() {
+        return getElement(`created-${elements.size}`);
+      }
+    },
+    google: {
+      script: {
+        run: scriptRun
+      }
+    }
+  };
+  const html = fs.readFileSync(
+    path.join(sourceDirectory, "MemberScript.html"),
+    "utf8"
+  );
+  const script = html.replace(/^\s*<script>\s*/, "").replace(/\s*<\/script>\s*$/, "");
+  vm.createContext(context);
+  vm.runInContext(script, context);
+
+  return {
+    elements,
+    getElement,
+    serverCalls,
+    failureHandler,
+    async submit() {
+      await getElement("loginForm").listeners.submit({
+        preventDefault() {}
+      });
+    }
+  };
+}
+
+test("member login uses a fixed Thai country prefix and nine digit input", () => {
+  const html = fs.readFileSync(path.join(sourceDirectory, "Member.html"), "utf8");
+  const loginPhone = html.match(/<input[^>]*id="loginPhone"[^>]*>/);
+  const profilePhone = html.match(/<input[^>]*id="accountPhone"[^>]*>/);
+
+  assert.match(html, /class="phone-prefix"[^>]*>\+66</);
+  assert.ok(loginPhone, "missing #loginPhone");
+  assert.match(loginPhone[0], /maxlength="9"/);
+  assert.match(loginPhone[0], /inputmode="numeric"/);
+  assert.match(loginPhone[0], /placeholder="81 234 5678"/);
+  assert.match(
+    loginPhone[0],
+    /aria-describedby="loginPhoneHelp loginPhoneError"/
+  );
+  assert.match(html, /id="loginPhoneHelp"/);
+  assert.match(html, /id="loginPhoneError"[^>]*class="field-error"/);
+  assert.ok(profilePhone, "missing #accountPhone");
+  assert.match(profilePhone[0], /maxlength="14"/);
+});
+
+test("member login rejects invalid national numbers before calling the server", async () => {
+  for (const value of ["12345678", "012345678", "12345678a"]) {
+    const harness = createMemberLoginHarness();
+    harness.getElement("loginPhone").value = value;
+    harness.getElement("loginPin").value = "123456";
+
+    await harness.submit();
+
+    assert.equal(harness.serverCalls.length, 0, `server called for ${value}`);
+    assert.match(harness.getElement("loginPhoneError").textContent, /9 หลัก/);
+    assert.equal(
+      harness.getElement("loginPhoneError").classList.contains("visible"),
+      true
+    );
+    assert.equal(harness.getElement("loginPhone").ariaInvalid, "true");
+    assert.equal(harness.getElement("loginButton").disabled, false);
+  }
+});
+
+test("member login converts and sends a valid national number", async () => {
+  const harness = createMemberLoginHarness();
+  harness.getElement("loginPhone").value = "81 234 5678";
+  harness.getElement("loginPin").value = "123456";
+
+  await harness.submit();
+
+  assert.equal(harness.serverCalls.length, 1);
+  assert.equal(harness.serverCalls[0].name, "loginMember");
+  assert.equal(harness.serverCalls[0].payload.phone, "0812345678");
+  assert.equal(harness.serverCalls[0].payload.pin, "123456");
+  assert.equal(harness.getElement("loginPhoneError").textContent, "");
+  assert.equal(
+    harness.getElement("loginPhoneError").classList.contains("visible"),
+    false
+  );
+  assert.equal(harness.getElement("loginPhone").ariaInvalid, "false");
+  assert.equal(harness.getElement("loginButton").disabled, false);
+});
+
+test("member login script defines domestic phone conversion without innerHTML", () => {
+  const script = fs.readFileSync(
+    path.join(sourceDirectory, "MemberScript.html"),
+    "utf8"
+  );
+
+  assert.match(script, /function toDomesticPhone\(value\)/);
+  assert.match(script, /"0" \+ digits/);
+  assert.match(script, /phone:\s*domesticPhone/);
+  assert.equal(script.includes("innerHTML"), false);
+});
+
+test("member login country prefix styles are responsive and accessible", () => {
+  const styles = fs.readFileSync(path.join(sourceDirectory, "Styles.html"), "utf8");
+
+  assert.match(styles, /\.phone-input-group/);
+  assert.match(styles, /\.phone-prefix/);
+  assert.match(styles, /\.field-help/);
+  assert.match(styles, /\.phone-input-group:focus-within/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.phone-input-group/);
+});

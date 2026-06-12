@@ -33,6 +33,28 @@
       element.classList.remove("visible");
     }
 
+    function toDomesticPhone(value) {
+      var digits = String(value || "").replace(/\D/g, "");
+      return /^[1-9]\d{8}$/.test(digits) ? "0" + digits : "";
+    }
+
+    function clearLoginPhoneError() {
+      var phoneInput = document.getElementById("loginPhone");
+      var phoneError = document.getElementById("loginPhoneError");
+      phoneInput.setAttribute("aria-invalid", "false");
+      phoneError.textContent = "";
+      phoneError.classList.remove("visible");
+    }
+
+    function showLoginPhoneError() {
+      var phoneInput = document.getElementById("loginPhone");
+      var phoneError = document.getElementById("loginPhoneError");
+      phoneInput.setAttribute("aria-invalid", "true");
+      phoneError.textContent = "กรุณากรอกเบอร์โทรศัพท์ 9 หลักโดยไม่ใส่เลข 0 ด้านหน้า";
+      phoneError.classList.add("visible");
+      phoneInput.focus();
+    }
+
     function logout(message) {
       sessionStorage.removeItem(storageKey);
       token = "";
@@ -47,6 +69,7 @@
       accountView.hidden = true;
       loginView.hidden = false;
       document.getElementById("loginForm").reset();
+      clearLoginPhoneError();
       if (message) showAlert(loginAlert, message);
     }
 
@@ -258,11 +281,19 @@
     document.getElementById("loginForm").addEventListener("submit", async function (event) {
       event.preventDefault();
       clearAlert(loginAlert);
+      clearLoginPhoneError();
       var button = document.getElementById("loginButton");
+      var domesticPhone = toDomesticPhone(
+        document.getElementById("loginPhone").value
+      );
+      if (!domesticPhone) {
+        showLoginPhoneError();
+        return;
+      }
       button.disabled = true;
       try {
         var result = await callServer("loginMember", {
-          phone: document.getElementById("loginPhone").value,
+          phone: domesticPhone,
           pin: document.getElementById("loginPin").value
         });
         if (!result || !result.ok) {
@@ -279,6 +310,10 @@
       } finally {
         button.disabled = false;
       }
+    });
+
+    document.getElementById("loginPhone").addEventListener("input", function () {
+      clearLoginPhoneError();
     });
 
     document.getElementById("profileForm").addEventListener("submit", async function (event) {
