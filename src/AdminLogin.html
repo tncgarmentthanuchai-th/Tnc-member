@@ -30,7 +30,12 @@
           aria-describedby="adminLoginDescription adminLoginNote"
           data-account-chooser="https://accounts.google.com/AccountChooser?continue=<?!= encodeURIComponent(getAdminPageUrl_()); ?>"
         >
-          เลือกบัญชี Google และเข้าสู่ระบบ
+          <span class="google-login-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M17 10h-1V7a4 4 0 0 0-8 0v3H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2Zm-7-3a2 2 0 0 1 4 0v3h-4V7Zm3 9.73V18h-2v-1.27a2 2 0 1 1 2 0Z"/>
+            </svg>
+          </span>
+          <span>เข้าสู่ระบบด้วย Google</span>
         </a>
         <p id="adminLoginNote" class="admin-access-note">
           หาก Google ขออนุญาตเข้าถึงข้อมูลบัญชี โปรดอนุญาตเพื่อให้ระบบอ่านอีเมลสำหรับตรวจสอบสิทธิ์

@@ -139,6 +139,11 @@ test("admin access pages explain Google identity without password collection", (
   assert.match(login, /href="\?page=admin"/);
   assert.match(login, /accounts\.google\.com\/AccountChooser/);
   assert.match(login, /aria-describedby=/);
+  assert.match(
+    login,
+    /class="google-login-mark"[^>]*aria-hidden="true"[^>]*>[\s\S]*?<svg/
+  );
+  assert.match(login, /เข้าสู่ระบบด้วย Google/);
   assert.doesNotMatch(login, /type=["']password["']/i);
   assert.equal(login.includes("innerHTML"), false);
 
@@ -155,6 +160,11 @@ test("admin access gate styles are accessible and responsive", () => {
   assert.match(styles, /\.admin-access-card/);
   assert.match(styles, /\.admin-access-button/);
   assert.match(styles, /\.admin-access-button:focus-visible/);
+  assert.match(
+    styles,
+    /\.google-login-mark\s*\{[^}]*display:\s*inline-grid[^}]*width:[^}]*height:/i
+  );
+  assert.match(styles, /\.google-login-mark svg\s*\{/);
   assert.match(
     styles,
     /@media \(max-width: 520px\)[\s\S]*\.admin-access-page[\s\S]*\.admin-access-card/

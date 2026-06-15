@@ -701,6 +701,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
     min-height: 48px;
     border-radius: 10px;
     padding: 11px 18px;
@@ -710,6 +711,21 @@
     line-height: 1.4;
     text-decoration: none;
     transition: background 0.18s, transform 0.18s;
+  }
+  .google-login-mark {
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: var(--navy);
+    background: #fff;
+  }
+  .google-login-mark svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
   }
   .admin-access-button:hover { background: var(--pink); }
   .admin-access-button:focus-visible {
