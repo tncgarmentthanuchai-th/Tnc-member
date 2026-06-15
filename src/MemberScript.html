@@ -2,7 +2,23 @@
   (function () {
     "use strict";
     var storageKey = "tncMemberSession";
-    var token = sessionStorage.getItem(storageKey) || "";
+    // localStorage = จำไว้ข้ามการปิดเบราว์เซอร์ (จำฉันไว้), sessionStorage = เฉพาะแท็บนี้
+    var token = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey) || "";
+
+    function saveToken(value, remember) {
+      if (remember) {
+        localStorage.setItem(storageKey, value);
+        sessionStorage.removeItem(storageKey);
+      } else {
+        sessionStorage.setItem(storageKey, value);
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    function clearToken() {
+      localStorage.removeItem(storageKey);
+      sessionStorage.removeItem(storageKey);
+    }
     var loginView = document.getElementById("loginView");
     var accountView = document.getElementById("accountView");
     var loginAlert = document.getElementById("loginAlert");
@@ -62,7 +78,7 @@
     }
 
     function logout(message) {
-      sessionStorage.removeItem(storageKey);
+      clearToken();
       token = "";
       currentBenefits = null;
       orderPage = 1;
@@ -303,11 +319,14 @@
         showLoginPhoneError();
         return;
       }
+      var rememberInput = document.getElementById("loginRemember");
+      var remember = rememberInput ? Boolean(rememberInput.checked) : false;
       button.disabled = true;
       try {
         var result = await callServer("loginMember", {
           phone: domesticPhone,
-          pin: document.getElementById("loginPin").value
+          pin: document.getElementById("loginPin").value,
+          remember: remember
         });
         if (!result || !result.ok) {
           showAlert(loginAlert, result && result.code === "LOGIN_BLOCKED"
@@ -316,7 +335,7 @@
           return;
         }
         token = result.token;
-        sessionStorage.setItem(storageKey, token);
+        saveToken(token, remember);
         await loadAccount();
       } catch (error) {
         showAlert(loginAlert, "ระบบขัดข้องชั่วคราว กรุณาลองใหม่");

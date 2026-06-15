@@ -120,7 +120,9 @@ function createMemberService(repository, nowProvider) {
     };
   }
 
-  function login(phone, pin, secret) {
+  var REMEMBER_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // "จำฉันไว้" 7 วัน
+
+  function login(phone, pin, secret, remember) {
     var member = repository.findByPhone(core.normalizePhone(phone));
     if (!member || !auth.verifyPin(pin, member.pinSalt, member.pinHash)) {
       if (member) {
@@ -148,7 +150,13 @@ function createMemberService(repository, nowProvider) {
     });
     return {
       ok: true,
-      token: auth.createSessionToken(member, secret),
+      token: auth.createSessionToken(
+        member,
+        secret,
+        undefined,
+        remember ? REMEMBER_SESSION_TTL_MS : undefined
+      ),
+      remember: Boolean(remember),
       mustChangePin: String(member.mustChangePin) === "true" ||
         member.mustChangePin === true,
       member: publicMember(member)

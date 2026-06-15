@@ -232,7 +232,13 @@ function loginMember(payload) {
     if (cache.get(blockedKey)) {
       return { ok: false, code: "LOGIN_BLOCKED" };
     }
-    var result = getService().login(phone, pin, getMemberSessionSecret_());
+    var remember = Boolean(payload && payload.remember);
+    var result = getService().login(
+      phone,
+      pin,
+      getMemberSessionSecret_(),
+      remember
+    );
     if (!result.ok) {
       var attemptKey = "attempts:" + key;
       var attempts = Number(cache.get(attemptKey) || 0) + 1;

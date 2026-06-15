@@ -48,3 +48,33 @@ test("signed session token expires and enforces session version", () => {
     null
   );
 });
+
+test("session token honours a custom TTL (remember me = 7 days)", () => {
+  const now = Date.parse("2026-06-11T10:00:00.000Z");
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  const token = createSessionToken(
+    { memberId: "TNC-000002", sessionVersion: 1 },
+    "test-secret",
+    now,
+    sevenDays
+  );
+
+  assert.deepEqual(
+    verifySessionToken(token, "test-secret", now + 1000, 1),
+    {
+      memberId: "TNC-000002",
+      sessionVersion: 1,
+      issuedAt: now,
+      expiresAt: now + sevenDays
+    }
+  );
+  // ยังไม่หมดอายุที่ 24 ชม. (ต่างจาก token ปกติ)
+  assert.ok(
+    verifySessionToken(token, "test-secret", now + 24 * 60 * 60 * 1000 + 1, 1)
+  );
+  // หมดอายุหลัง 7 วัน
+  assert.equal(
+    verifySessionToken(token, "test-secret", now + sevenDays + 1, 1),
+    null
+  );
+});

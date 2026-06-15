@@ -960,6 +960,7 @@ function createMemberLoginHarness() {
     }
   };
   const storage = new Map();
+  const persistentStorage = new Map();
   const context = {
     console,
     Intl,
@@ -973,6 +974,17 @@ function createMemberLoginHarness() {
       },
       removeItem(key) {
         storage.delete(key);
+      }
+    },
+    localStorage: {
+      getItem(key) {
+        return persistentStorage.get(key) || null;
+      },
+      setItem(key, value) {
+        persistentStorage.set(key, value);
+      },
+      removeItem(key) {
+        persistentStorage.delete(key);
       }
     },
     document: {

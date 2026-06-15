@@ -77,13 +77,16 @@ function verifyPin(pin, salt, expectedHash) {
   return constantTimeEqual(hashPin(pin, salt), expectedHash);
 }
 
-function createSessionToken(member, secret, nowValue) {
+var DEFAULT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
+function createSessionToken(member, secret, nowValue, ttlMs) {
   var now = Number(nowValue == null ? Date.now() : nowValue);
+  var ttl = Number(ttlMs) > 0 ? Number(ttlMs) : DEFAULT_SESSION_TTL_MS;
   var payload = {
     memberId: member.memberId,
     sessionVersion: Number(member.sessionVersion) || 1,
     issuedAt: now,
-    expiresAt: now + 24 * 60 * 60 * 1000
+    expiresAt: now + ttl
   };
   var encoded = stringToBase64Url(JSON.stringify(payload));
   return encoded + "." + bytesToBase64Url(hmacBytes(encoded, secret));
