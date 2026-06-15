@@ -82,6 +82,7 @@ function memberFromRow(row) {
   MEMBER_HEADERS.forEach(function (header, index) {
     member[header] = sheetValueToString(row[index]);
   });
+  member.phone = normalizePhone(member.phone);
   return member;
 }
 
@@ -97,6 +98,8 @@ function rowToObject(headers, row) {
     if (header === "amount") {
       var amount = Number(row[index]);
       result[header] = Number.isFinite(amount) ? amount : 0;
+    } else if (header === "phone") {
+      result[header] = normalizePhone(row[index]);
     } else if (header === "orderDate") {
       result[header] = sheetDateToIsoDate(row[index]);
     } else {
@@ -104,6 +107,11 @@ function rowToObject(headers, row) {
     }
   });
   return result;
+}
+
+function phoneValuesMatch(left, right) {
+  var normalizedLeft = normalizePhone(left);
+  return Boolean(normalizedLeft) && normalizedLeft === normalizePhone(right);
 }
 
 function objectToRow(headers, value) {
@@ -117,6 +125,19 @@ function findDataRow(sheet, headers, predicate) {
   if (lastRow < 2) return null;
   var values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
   for (var index = 0; index < values.length; index += 1) {
+    var value = rowToObject(headers, values[index]);
+    if (predicate(value)) {
+      return { rowNumber: index + 2, value: value };
+    }
+  }
+  return null;
+}
+
+function findLastDataRow(sheet, headers, predicate) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  var values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  for (var index = values.length - 1; index >= 0; index -= 1) {
     var value = rowToObject(headers, values[index]);
     if (predicate(value)) {
       return { rowNumber: index + 2, value: value };
@@ -155,10 +176,10 @@ function createSheetRepository() {
   }
 
   function findByPhone(phone) {
-    var found = findMemberRow(membersSheet, function (member) {
-      return member.phone === phone;
+    var found = findLastDataRow(membersSheet, MEMBER_HEADERS, function (member) {
+      return phoneValuesMatch(member.phone, phone);
     });
-    return found ? found.member : null;
+    return found ? found.value : null;
   }
 
   function findById(memberId) {

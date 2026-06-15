@@ -227,7 +227,7 @@ function loginMember(payload) {
     var phone = normalizePhone(payload && payload.phone);
     var pin = String(payload && payload.pin || "");
     var cache = CacheService.getScriptCache();
-    var key = hashPin(phone || "blank", "login-rate");
+    var key = hashPin(phone || "blank", "login-rate-v2");
     var blockedKey = "blocked:" + key;
     if (cache.get(blockedKey)) {
       return { ok: false, code: "LOGIN_BLOCKED" };

@@ -129,17 +129,16 @@ test("publicMember normalizes points to a finite number", () => {
   });
 });
 
-test("register returns the original id for a duplicate phone", () => {
+test("register rejects a duplicate phone without creating another member", () => {
   const repository = createMemoryRepository();
   const service = createMemberService(repository);
 
-  const first = service.register(validPayload);
+  service.register(validPayload);
   const duplicate = service.register({ ...validPayload, fullname: "ชื่อใหม่" });
 
-  assert.equal(duplicate.ok, true);
-  assert.equal(duplicate.code, "EXISTING");
-  assert.equal(duplicate.memberId, first.memberId);
-  assert.equal(duplicate.existing, true);
+  assert.equal(duplicate.ok, false);
+  assert.equal(duplicate.code, ERROR_CODES.DUPLICATE_PHONE);
+  assert.equal(duplicate.fields.phone, "เบอร์โทรศัพท์นี้สมัครสมาชิกแล้ว");
   assert.equal(repository.members.length, 1);
 });
 

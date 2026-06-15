@@ -23,7 +23,14 @@ function normalizeText(value) {
 }
 
 function normalizePhone(value) {
-  return String(value == null ? "" : value).replace(/\D/g, "");
+  var digits = String(value == null ? "" : value).replace(/\D/g, "");
+  if (/^66\d{9}$/.test(digits)) {
+    return "0" + digits.slice(2);
+  }
+  if (/^[1-9]\d{8}$/.test(digits)) {
+    return "0" + digits;
+  }
+  return digits;
 }
 
 function validateMemberPayload(payload) {

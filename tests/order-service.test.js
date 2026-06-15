@@ -367,6 +367,72 @@ test("sheet repository normalizes order Date values to ISO calendar dates", () =
   assert.equal(value, "2026-06-12");
 });
 
+test("sheet repository matches phones after Sheet removes the leading zero", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "SheetRepository.js"),
+    "utf8"
+  );
+  const context = {
+    normalizePhone(value) {
+      const digits = String(value == null ? "" : value).replace(/\D/g, "");
+      if (/^66\d{9}$/.test(digits)) return `0${digits.slice(2)}`;
+      if (/^[1-9]\d{8}$/.test(digits)) return `0${digits}`;
+      return digits;
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+
+  assert.equal(
+    vm.runInContext("phoneValuesMatch('0812345678', 812345678)", context),
+    true
+  );
+  assert.equal(
+    vm.runInContext(
+      "phoneValuesMatch('0812345678', '+66 81-234-5678')",
+      context
+    ),
+    true
+  );
+});
+
+test("sheet repository selects the newest row when legacy duplicates exist", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "SheetRepository.js"),
+    "utf8"
+  );
+  const context = {
+    normalizePhone(value) {
+      return String(value == null ? "" : value).replace(/\D/g, "");
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  context.testSheet = {
+    getLastRow() {
+      return 3;
+    },
+    getRange() {
+      return {
+        getValues() {
+          return [
+            ["TNC-000001", "Old"],
+            ["TNC-000002", "Newest"]
+          ];
+        }
+      };
+    }
+  };
+
+  const found = vm.runInContext(
+    "findLastDataRow(testSheet, ['memberId', 'fullname'], function () { return true; })",
+    context
+  );
+
+  assert.equal(found.rowNumber, 3);
+  assert.equal(found.value.memberId, "TNC-000002");
+});
+
 test("OrderService resolves PointsCore and member status as Apps Script globals", () => {
   const context = {};
   vm.createContext(context);

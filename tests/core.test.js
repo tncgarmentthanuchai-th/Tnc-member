@@ -16,6 +16,11 @@ test("normalizePhone removes separators and preserves digits", () => {
   assert.equal(normalizePhone("081-234-5678"), "0812345678");
 });
 
+test("normalizePhone restores Thai domestic format from Sheet numbers and +66", () => {
+  assert.equal(normalizePhone(812345678), "0812345678");
+  assert.equal(normalizePhone("+66 81 234 5678"), "0812345678");
+});
+
 test("validateMemberPayload accepts a valid Thai member payload", () => {
   const result = validateMemberPayload({
     fullname: "สมชาย ใจดี",

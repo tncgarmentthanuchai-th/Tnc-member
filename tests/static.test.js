@@ -1168,6 +1168,12 @@ test("member login converts and sends a valid national number", async () => {
   assert.equal(harness.getElement("loginButton").disabled, false);
 });
 
+test("member login rate limit uses the post-phone-fix cache namespace", () => {
+  const code = fs.readFileSync(path.join(sourceDirectory, "Code.js"), "utf8");
+
+  assert.match(code, /hashPin\(phone \|\| "blank", "login-rate-v2"\)/);
+});
+
 test("member login script defines domestic phone conversion without innerHTML", () => {
   const script = fs.readFileSync(
     path.join(sourceDirectory, "MemberScript.html"),

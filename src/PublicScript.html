@@ -13,6 +13,7 @@
 
     var errorMessages = {
       VALIDATION_ERROR: "กรุณาตรวจสอบข้อมูลที่กรอก",
+      DUPLICATE_PHONE: "เบอร์โทรศัพท์นี้สมัครสมาชิกแล้ว กรุณาเข้าสู่ระบบหรือติดต่อแอดมิน",
       SYSTEM_ERROR: "ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง"
     };
 
@@ -121,12 +122,8 @@
         }
 
         memberId.textContent = result.memberId;
-        successTitle.textContent = result.existing
-          ? "คุณเป็นสมาชิกอยู่แล้ว"
-          : "สมัครสมาชิกสำเร็จ";
-        successMessage.textContent = result.existing
-          ? "ระบบพบเบอร์โทรศัพท์นี้และแสดงรหัสสมาชิกเดิม"
-          : "ขอบคุณที่เป็นส่วนหนึ่งของ TNC Garment";
+        successTitle.textContent = "สมัครสมาชิกสำเร็จ";
+        successMessage.textContent = "ขอบคุณที่เป็นส่วนหนึ่งของ TNC Garment";
         formView.classList.add("hidden");
         successView.classList.add("visible");
         successView.focus();

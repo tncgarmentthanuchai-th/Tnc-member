@@ -57,13 +57,9 @@ function createMemberService(repository, nowProvider) {
       var data = validation.value;
       var existing = repository.findByPhone(data.phone);
       if (existing) {
-        return {
-          ok: true,
-          code: "EXISTING",
-          memberId: existing.memberId,
-          existing: true,
-          status: existing.status
-        };
+        return failure(core.ERROR_CODES.DUPLICATE_PHONE, {
+          phone: "เบอร์โทรศัพท์นี้สมัครสมาชิกแล้ว"
+        });
       }
 
       var timestamp = now();
