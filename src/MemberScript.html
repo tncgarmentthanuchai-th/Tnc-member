@@ -38,6 +38,12 @@
       return /^[1-9]\d{8}$/.test(digits) ? "0" + digits : "";
     }
 
+    function toNationalPhone(value) {
+      var digits = String(value || "").replace(/\D/g, "");
+      if (/^[1-9]\d{8}$/.test(digits)) return digits;
+      return /^0[1-9]\d{8}$/.test(digits) ? digits.slice(1) : "";
+    }
+
     function clearLoginPhoneError() {
       var phoneInput = document.getElementById("loginPhone");
       var phoneError = document.getElementById("loginPhoneError");
@@ -313,6 +319,13 @@
     });
 
     document.getElementById("loginPhone").addEventListener("input", function () {
+      clearLoginPhoneError();
+    });
+
+    document.getElementById("loginPhone").addEventListener("paste", function (event) {
+      event.preventDefault();
+      var nationalPhone = toNationalPhone(event.clipboardData.getData("text"));
+      if (nationalPhone) this.value = nationalPhone;
       clearLoginPhoneError();
     });
 

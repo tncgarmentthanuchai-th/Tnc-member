@@ -24,14 +24,14 @@
             <div class="field">
               <label for="loginPhone">เบอร์โทรศัพท์</label>
               <div class="phone-input-group">
-                <span class="phone-prefix" aria-label="รหัสประเทศไทย บวกหกหก">+66</span>
+                <span class="phone-prefix" aria-hidden="true">+66</span>
                 <input id="loginPhone" type="tel" maxlength="9" inputmode="numeric"
-                  autocomplete="tel-national" placeholder="81 234 5678"
+                  autocomplete="off" placeholder="81 234 5678"
                   pattern="[1-9][0-9]{8}"
                   aria-describedby="loginPhoneHelp loginPhoneError"
                   aria-invalid="false" required>
               </div>
-              <p id="loginPhoneHelp" class="field-help">กรอก 9 หลักโดยไม่ใส่เลข 0 ด้านหน้า</p>
+              <p id="loginPhoneHelp" class="field-help">รหัสประเทศไทย +66 กรอก 9 หลักโดยไม่ใส่เลข 0 ด้านหน้า</p>
               <p id="loginPhoneError" class="field-error" aria-live="polite"></p>
             </div>
             <div class="field">

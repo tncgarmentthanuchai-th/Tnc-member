@@ -868,21 +868,50 @@ function createMemberLoginHarness() {
 test("member login uses a fixed Thai country prefix and nine digit input", () => {
   const html = fs.readFileSync(path.join(sourceDirectory, "Member.html"), "utf8");
   const loginPhone = html.match(/<input[^>]*id="loginPhone"[^>]*>/);
+  const loginPhoneHelp = html.match(/<p[^>]*id="loginPhoneHelp"[^>]*>[\s\S]*?<\/p>/);
   const profilePhone = html.match(/<input[^>]*id="accountPhone"[^>]*>/);
 
-  assert.match(html, /class="phone-prefix"[^>]*>\+66</);
+  assert.match(html, /class="phone-prefix"[^>]*aria-hidden="true"[^>]*>\+66</);
   assert.ok(loginPhone, "missing #loginPhone");
   assert.match(loginPhone[0], /maxlength="9"/);
   assert.match(loginPhone[0], /inputmode="numeric"/);
+  assert.match(loginPhone[0], /autocomplete="off"/);
   assert.match(loginPhone[0], /placeholder="81 234 5678"/);
   assert.match(
     loginPhone[0],
     /aria-describedby="loginPhoneHelp loginPhoneError"/
   );
-  assert.match(html, /id="loginPhoneHelp"/);
+  assert.ok(loginPhoneHelp, "missing #loginPhoneHelp");
+  assert.match(loginPhoneHelp[0], /\+66/);
   assert.match(html, /id="loginPhoneError"[^>]*class="field-error"/);
   assert.ok(profilePhone, "missing #accountPhone");
   assert.match(profilePhone[0], /maxlength="14"/);
+});
+
+test("member login paste accepts formatted national and domestic phone numbers", () => {
+  [
+    ["81 234 5678", "812345678"],
+    ["081-234-5678", "812345678"]
+  ].forEach(([clipboardText, expectedValue]) => {
+    const harness = createMemberLoginHarness();
+    const phoneInput = harness.getElement("loginPhone");
+    let defaultPrevented = false;
+
+    phoneInput.listeners.paste.call(phoneInput, {
+      preventDefault() {
+        defaultPrevented = true;
+      },
+      clipboardData: {
+        getData(type) {
+          assert.equal(type, "text");
+          return clipboardText;
+        }
+      }
+    });
+
+    assert.equal(defaultPrevented, true);
+    assert.equal(phoneInput.value, expectedValue);
+  });
 });
 
 test("member login rejects invalid national numbers before calling the server", async () => {
