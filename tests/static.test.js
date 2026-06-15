@@ -88,6 +88,39 @@ test("admin route renders login, unauthorized, or admin by identity state", () =
   );
 });
 
+test("admin APIs collapse blank sessions to the unauthorized contract", () => {
+  const context = loadSource("Code.js", {
+    ERROR_CODES: {
+      UNAUTHORIZED: "UNAUTHORIZED",
+      SYSTEM_ERROR: "SYSTEM_ERROR"
+    },
+    createAppsScriptAuthorizer() {
+      return {
+        requireAdmin() {
+          return {
+            ok: false,
+            code: "LOGIN_REQUIRED",
+            email: "",
+            internalReason: "blank active user"
+          };
+        }
+      };
+    },
+    console: {
+      error() {}
+    }
+  });
+
+  const result = context.withAdmin(() => {
+    assert.fail("admin callback must not run");
+  });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    ok: false,
+    code: "UNAUTHORIZED"
+  });
+});
+
 test("admin access pages explain Google identity without password collection", () => {
   const allowedEmail = "tncgarment.thanuchai@gmail.com";
   const login = fs.readFileSync(

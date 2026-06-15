@@ -44,7 +44,9 @@ function runSafely(callback) {
 function withAdmin(callback) {
   return runSafely(function () {
     var session = createAppsScriptAuthorizer().requireAdmin();
-    if (!session.ok) return session;
+    if (!session.ok) {
+      return { ok: false, code: ERROR_CODES.UNAUTHORIZED };
+    }
     return callback(session.email);
   });
 }
