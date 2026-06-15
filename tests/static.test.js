@@ -748,6 +748,7 @@ function createMemberLoginHarness() {
   const serverCalls = [];
   let successHandler = () => {};
   let failureHandler = () => {};
+  let renderAccount = () => {};
 
   function createClassList() {
     const classes = new Set();
@@ -842,19 +843,28 @@ function createMemberLoginHarness() {
       script: {
         run: scriptRun
       }
+    },
+    captureRenderAccount(handler) {
+      renderAccount = handler;
     }
   };
   const html = fs.readFileSync(
     path.join(sourceDirectory, "MemberScript.html"),
     "utf8"
   );
-  const script = html.replace(/^\s*<script>\s*/, "").replace(/\s*<\/script>\s*$/, "");
+  const script = html
+    .replace(/^\s*<script>\s*/, "")
+    .replace(/\s*<\/script>\s*$/, "")
+    .replace("    loadAccount();", "    captureRenderAccount(renderAccount);\n    loadAccount();");
   vm.createContext(context);
   vm.runInContext(script, context);
 
   return {
     elements,
     getElement,
+    renderAccount(result) {
+      renderAccount(result);
+    },
     serverCalls,
     failureHandler,
     async submit() {
@@ -864,6 +874,68 @@ function createMemberLoginHarness() {
     }
   };
 }
+
+test("member rewards card uses normalized tier themes and defaults to Silver", () => {
+  const cases = [
+    [" silver ", "Silver", "rewards-tier-silver"],
+    ["GOLD", "Gold", "rewards-tier-gold"],
+    ["platinum", "Platinum", "rewards-tier-platinum"],
+    ["Diamond", "Silver", "rewards-tier-silver"],
+    [null, "Silver", "rewards-tier-silver"]
+  ];
+
+  cases.forEach(([inputTier, expectedTier, expectedClass]) => {
+    const harness = createMemberLoginHarness();
+    const member = {
+      memberId: "TNC-000001",
+      fullname: "Member",
+      phone: "0812345678",
+      status: "Active",
+      points: 50000,
+      tier: inputTier,
+      lastOrderAt: "",
+      orgType: "",
+      orgName: ""
+    };
+
+    harness.renderAccount({
+      member,
+      benefits: {},
+      mustChangePin: false
+    });
+
+    assert.equal(harness.getElement("accountTier").textContent, expectedTier);
+    assert.equal(
+      harness.getElement("accountTier").className,
+      `tier-badge tier-${expectedTier.toLowerCase()}`
+    );
+    assert.equal(
+      harness.getElement("rewardsSection").className,
+      `rewards-section ${expectedClass}`
+    );
+  });
+});
+
+test("member rewards tier themes provide distinct readable card treatments", () => {
+  const styles = fs.readFileSync(path.join(sourceDirectory, "Styles.html"), "utf8");
+
+  assert.match(
+    styles,
+    /\.rewards-tier-silver\s*\{[^}]*background:[^}]*var\(--navy\)[^}]*border:[^}]*silver[^}]*box-shadow:/i
+  );
+  assert.match(
+    styles,
+    /\.rewards-tier-gold\s*\{[^}]*background:[^}]*var\(--navy\)[^}]*border:[^}]*gold[^}]*box-shadow:/i
+  );
+  assert.match(
+    styles,
+    /\.rewards-tier-platinum\s*\{[^}]*background:[^}]*linear-gradient[^}]*indigo[^}]*border:[^}]*gold[^}]*box-shadow:/i
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 520px\)[\s\S]*\.rewards-hero\s*\{\s*flex-direction:\s*column/
+  );
+});
 
 test("member login uses a fixed Thai country prefix and nine digit input", () => {
   const html = fs.readFileSync(path.join(sourceDirectory, "Member.html"), "utf8");

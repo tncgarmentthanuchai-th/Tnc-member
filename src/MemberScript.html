@@ -159,7 +159,12 @@
     function renderAccount(result) {
       var member = result.member;
       var points = Number(member.points) || 0;
-      var tier = member.tier || "Silver";
+      var tierValue = String(member.tier || "").trim().toLowerCase();
+      var tier = tierValue === "gold"
+        ? "Gold"
+        : tierValue === "platinum"
+          ? "Platinum"
+          : "Silver";
       if (result.benefits) currentBenefits = result.benefits;
       currentPhone = member.phone;
       document.body.classList.add("member-account-open");
@@ -172,6 +177,8 @@
       document.getElementById("accountTier").textContent = tier;
       document.getElementById("accountTier").className =
         "tier-badge tier-" + tier.toLowerCase();
+      document.getElementById("rewardsSection").className =
+        "rewards-section rewards-tier-" + tier.toLowerCase();
       document.getElementById("accountLastOrder").textContent = member.lastOrderAt
         ? "สั่งซื้อล่าสุด " + formatDate(member.lastOrderAt)
         : "ยังไม่มีรายการสั่งซื้อ";
