@@ -12,6 +12,7 @@ const {
   validateCancellationReason,
   generateOrderId,
   calculateTier,
+  normalizeTier,
   getTierBenefits,
   summarizeOrders,
   paginateOrders
@@ -128,6 +129,18 @@ test("tier boundaries are deterministic", () => {
   assert.equal(calculateTier(100000), TIER.PLATINUM);
 });
 
+test("tier normalization ignores casing and surrounding whitespace", () => {
+  assert.equal(normalizeTier(" silver "), TIER.SILVER);
+  assert.equal(normalizeTier("GOLD"), TIER.GOLD);
+  assert.equal(normalizeTier(" platinum "), TIER.PLATINUM);
+});
+
+test("tier normalization defaults unknown values to Silver", () => {
+  [undefined, null, "", "diamond"].forEach((tier) => {
+    assert.equal(normalizeTier(tier), TIER.SILVER);
+  });
+});
+
 test("tier benefits match the approved specification", () => {
   assert.deepEqual(getTierBenefits(TIER.SILVER), {
     discount: 5,
@@ -165,6 +178,12 @@ test("tier benefits match the approved specification", () => {
     dedicatedAdmin: true,
     eventInvite: true
   });
+});
+
+test("tier benefits use normalized tier values", () => {
+  assert.equal(getTierBenefits("GOLD").discount, 8);
+  assert.equal(getTierBenefits(" platinum ").discount, 12);
+  assert.equal(getTierBenefits("diamond").discount, 5);
 });
 
 test("summary ignores cancelled orders, rounds totals, and keeps latest active date", () => {

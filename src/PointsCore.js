@@ -126,8 +126,15 @@ function calculateTier(points) {
   return TIER.PLATINUM;
 }
 
+function normalizeTier(tier) {
+  var value = normalizePointsText(tier).toLowerCase();
+  if (value === TIER.GOLD.toLowerCase()) return TIER.GOLD;
+  if (value === TIER.PLATINUM.toLowerCase()) return TIER.PLATINUM;
+  return TIER.SILVER;
+}
+
 function getTierBenefits(tier) {
-  return TIER_BENEFITS[tier] || TIER_BENEFITS[TIER.SILVER];
+  return TIER_BENEFITS[normalizeTier(tier)];
 }
 
 function summarizeOrders(orders) {
@@ -183,6 +190,7 @@ if (typeof module !== "undefined" && module.exports) {
     validateCancellationReason: validateCancellationReason,
     generateOrderId: generateOrderId,
     calculateTier: calculateTier,
+    normalizeTier: normalizeTier,
     getTierBenefits: getTierBenefits,
     summarizeOrders: summarizeOrders,
     paginateOrders: paginateOrders
