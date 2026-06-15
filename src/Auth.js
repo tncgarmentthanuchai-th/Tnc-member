@@ -24,7 +24,10 @@ function createAuthorizer(activeEmailProvider, allowlistProvider) {
   function requireAdmin() {
     var email = String(activeEmailProvider() || "").trim().toLowerCase();
     var allowed = parseAdminEmails(allowlistProvider());
-    if (!email || allowed.indexOf(email) === -1) {
+    if (!email) {
+      return { ok: false, code: "LOGIN_REQUIRED" };
+    }
+    if (allowed.indexOf(email) === -1) {
       return { ok: false, code: errorCodes.UNAUTHORIZED };
     }
     return { ok: true, email: email };

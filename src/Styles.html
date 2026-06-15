@@ -633,22 +633,102 @@
   .toast.visible { transform: translateY(0); opacity: 1; }
   .toast.error { background: var(--red); }
 
-  .unauthorized-page {
+  .admin-access-page {
     min-height: 100vh;
     display: grid;
     place-items: center;
-    padding: 24px;
+    padding: 28px 16px;
+    background:
+      radial-gradient(circle at top left, rgba(233, 69, 96, 0.12), transparent 34%),
+      var(--canvas);
   }
-  .unauthorized-card {
-    width: min(100%, 470px);
-    border-radius: 16px;
-    padding: 34px;
-    text-align: center;
+  .admin-access-card {
+    width: min(100%, 540px);
+    overflow: hidden;
+    border: 1px solid rgba(23, 23, 43, 0.08);
+    border-radius: 18px;
     background: #fff;
     box-shadow: var(--shadow);
   }
-  .unauthorized-card h1 { color: var(--navy); font-size: 24px; }
-  .unauthorized-card p { color: var(--muted); line-height: 1.6; }
+  .admin-access-brand {
+    padding: 28px 32px 24px;
+    text-align: center;
+    background: var(--navy);
+  }
+  .admin-access-content {
+    padding: 30px 32px 32px;
+    text-align: center;
+  }
+  .admin-access-content h1 {
+    margin: 0 0 12px;
+    color: var(--navy);
+    font-size: clamp(23px, 5vw, 30px);
+    line-height: 1.25;
+  }
+  .admin-access-content > p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .admin-access-kicker {
+    margin-bottom: 8px !important;
+    color: var(--green) !important;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+  .admin-access-kicker-error { color: var(--red) !important; }
+  .admin-access-account {
+    margin: 24px 0 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: var(--soft);
+  }
+  .admin-access-account span {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .admin-access-account strong {
+    display: block;
+    overflow-wrap: anywhere;
+    color: var(--navy);
+    font-size: 15px;
+  }
+  .admin-access-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    border-radius: 10px;
+    padding: 11px 18px;
+    color: #fff;
+    background: var(--navy);
+    font-weight: 750;
+    line-height: 1.4;
+    text-decoration: none;
+    transition: background 0.18s, transform 0.18s;
+  }
+  .admin-access-button:hover { background: var(--pink); }
+  .admin-access-button:focus-visible {
+    outline: 3px solid rgba(233, 69, 96, 0.38);
+    outline-offset: 3px;
+  }
+  .admin-access-button:active { transform: translateY(1px); }
+  .admin-access-note {
+    margin-top: 14px !important;
+    font-size: 12px;
+  }
+  .admin-access-back {
+    display: inline-block;
+    margin-top: 18px;
+    color: var(--navy);
+    font-size: 13px;
+    font-weight: 700;
+    text-underline-offset: 3px;
+  }
 
   .sr-only {
     position: absolute;
@@ -679,6 +759,10 @@
     .public-card { min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
     .public-header { padding: 24px 20px 20px; }
     .public-body { padding: 25px 20px 30px; }
+    .admin-access-page { padding: 0; align-items: start; }
+    .admin-access-card { min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+    .admin-access-brand { padding: 25px 20px 22px; }
+    .admin-access-content { padding: 28px 20px 32px; }
     .phone-input-group { width: 100%; }
     .phone-prefix { padding-inline: 12px; }
     .success-actions { grid-template-columns: 1fr; }

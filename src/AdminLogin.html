@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include("Styles"); ?>
+</head>
+<body>
+  <main class="admin-access-page">
+    <section class="admin-access-card" aria-labelledby="adminLoginTitle">
+      <div class="admin-access-brand">
+        <div class="brand">TNC<span class="brand-accent">.</span>GARMENT</div>
+        <p class="eyebrow">MEMBER ADMINISTRATION</p>
+      </div>
+      <div class="admin-access-content">
+        <p class="admin-access-kicker">สำหรับผู้ดูแลระบบ</p>
+        <h1 id="adminLoginTitle">เข้าสู่ระบบด้วยบัญชี Google</h1>
+        <p id="adminLoginDescription">
+          ระบบจะใช้บัญชี Google ที่คุณเลือกเพื่อตรวจสอบสิทธิ์กับรายชื่อผู้ดูแล
+          โดยไม่มีการขอหรือจัดเก็บรหัสผ่านในเว็บไซต์นี้
+        </p>
+        <div class="admin-access-account" aria-label="บัญชี Google ที่ได้รับอนุญาต">
+          <span>บัญชีที่ได้รับอนุญาต</span>
+          <strong>tncgarment.thanuchai@gmail.com</strong>
+        </div>
+        <a
+          id="adminGoogleSignIn"
+          class="admin-access-button"
+          href="?page=admin"
+          aria-describedby="adminLoginDescription adminLoginNote"
+          data-account-chooser="https://accounts.google.com/AccountChooser?continue=<?!= encodeURIComponent(getAdminPageUrl_()); ?>"
+        >
+          เลือกบัญชี Google และเข้าสู่ระบบ
+        </a>
+        <p id="adminLoginNote" class="admin-access-note">
+          หาก Google ขออนุญาตเข้าถึงข้อมูลบัญชี โปรดอนุญาตเพื่อให้ระบบอ่านอีเมลสำหรับตรวจสอบสิทธิ์
+        </p>
+      </div>
+    </section>
+  </main>
+  <script>
+    (function () {
+      var signInLink = document.getElementById("adminGoogleSignIn");
+      signInLink.addEventListener("click", function () {
+        var accountChooser = signInLink.getAttribute("data-account-chooser");
+        if (!accountChooser) return;
+        signInLink.setAttribute("href", accountChooser);
+      });
+    }());
+  </script>
+</body>
+</html>

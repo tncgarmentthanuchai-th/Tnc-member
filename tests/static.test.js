@@ -28,6 +28,106 @@ test("all server JavaScript files have valid syntax", () => {
   });
 });
 
+function routeAdminPage(session) {
+  const rendered = [];
+  const context = loadSource("Code.js", {
+    ensureSystemReady_() {},
+    createAppsScriptAuthorizer() {
+      return {
+        requireAdmin() {
+          return session;
+        }
+      };
+    },
+    HtmlService: {
+      createTemplateFromFile(filename) {
+        return {
+          evaluate() {
+            const output = {
+              filename,
+              title: "",
+              metaTags: [],
+              setTitle(title) {
+                this.title = title;
+                return this;
+              },
+              addMetaTag(name, value) {
+                this.metaTags.push([name, value]);
+                return this;
+              }
+            };
+            rendered.push(output);
+            return output;
+          }
+        };
+      }
+    }
+  });
+
+  const output = context.doGet({ parameter: { page: "admin" } });
+  assert.equal(rendered.length, 1);
+  assert.equal(output, rendered[0]);
+  return output;
+}
+
+test("admin route renders login, unauthorized, or admin by identity state", () => {
+  assert.equal(
+    routeAdminPage({ ok: false, code: "LOGIN_REQUIRED" }).filename,
+    "AdminLogin"
+  );
+  assert.equal(
+    routeAdminPage({ ok: false, code: "UNAUTHORIZED" }).filename,
+    "Unauthorized"
+  );
+  assert.equal(
+    routeAdminPage({
+      ok: true,
+      email: "tncgarment.thanuchai@gmail.com"
+    }).filename,
+    "Admin"
+  );
+});
+
+test("admin access pages explain Google identity without password collection", () => {
+  const allowedEmail = "tncgarment.thanuchai@gmail.com";
+  const login = fs.readFileSync(
+    path.join(sourceDirectory, "AdminLogin.html"),
+    "utf8"
+  );
+  const unauthorized = fs.readFileSync(
+    path.join(sourceDirectory, "Unauthorized.html"),
+    "utf8"
+  );
+
+  assert.match(login, /lang="th"/);
+  assert.match(login, /TNC<span class="brand-accent">\.<\/span>GARMENT/);
+  assert.match(login, new RegExp(allowedEmail.replace(".", "\\.")));
+  assert.match(login, /Google/);
+  assert.match(login, /href="\?page=admin"/);
+  assert.match(login, /accounts\.google\.com\/AccountChooser/);
+  assert.match(login, /aria-describedby=/);
+  assert.doesNotMatch(login, /type=["']password["']/i);
+  assert.equal(login.includes("innerHTML"), false);
+
+  assert.match(unauthorized, new RegExp(allowedEmail.replace(".", "\\.")));
+  assert.match(unauthorized, /href="\?page=admin"/);
+  assert.doesNotMatch(unauthorized, /type=["']password["']/i);
+  assert.equal(unauthorized.includes("innerHTML"), false);
+});
+
+test("admin access gate styles are accessible and responsive", () => {
+  const styles = fs.readFileSync(path.join(sourceDirectory, "Styles.html"), "utf8");
+
+  assert.match(styles, /\.admin-access-page/);
+  assert.match(styles, /\.admin-access-card/);
+  assert.match(styles, /\.admin-access-button/);
+  assert.match(styles, /\.admin-access-button:focus-visible/);
+  assert.match(
+    styles,
+    /@media \(max-width: 520px\)[\s\S]*\.admin-access-page[\s\S]*\.admin-access-card/
+  );
+});
+
 test("client scripts have valid syntax and do not use innerHTML", () => {
   ["PublicScript.html", "AdminScript.html", "MemberScript.html"].forEach((file) => {
     const html = fs.readFileSync(path.join(sourceDirectory, file), "utf8");

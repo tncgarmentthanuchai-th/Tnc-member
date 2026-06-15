@@ -9,12 +9,19 @@ function renderTemplate(filename, title) {
     .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
+function getAdminPageUrl_() {
+  return ScriptApp.getService().getUrl() + "?page=admin";
+}
+
 function doGet(event) {
   ensureSystemReady_();
   var page = event && event.parameter ? event.parameter.page : "";
   if (page === "admin") {
     var session = createAppsScriptAuthorizer().requireAdmin();
     if (!session.ok) {
+      if (session.code === "LOGIN_REQUIRED") {
+        return renderTemplate("AdminLogin", "เข้าสู่ระบบผู้ดูแล");
+      }
       return renderTemplate("Unauthorized", "ไม่มีสิทธิ์เข้าถึง");
     }
     return renderTemplate("Admin", "TNC Garment - จัดการสมาชิก");

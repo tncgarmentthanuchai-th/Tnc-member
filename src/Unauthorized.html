@@ -6,12 +6,44 @@
   <?!= include("Styles"); ?>
 </head>
 <body>
-  <main class="unauthorized-page">
-    <section class="unauthorized-card">
-      <div class="brand" style="color:#17172b">TNC<span class="brand-accent">.</span>GARMENT</div>
-      <h1>ไม่มีสิทธิ์เข้าถึง</h1>
-      <p>กรุณาเข้าสู่ระบบด้วยบัญชี Google ที่ได้รับอนุญาต หรือแจ้งผู้ดูแลให้เพิ่มอีเมลใน Script Property <strong>ADMIN_EMAILS</strong></p>
+  <main class="admin-access-page">
+    <section class="admin-access-card" aria-labelledby="unauthorizedTitle">
+      <div class="admin-access-brand">
+        <div class="brand">TNC<span class="brand-accent">.</span>GARMENT</div>
+        <p class="eyebrow">MEMBER ADMINISTRATION</p>
+      </div>
+      <div class="admin-access-content">
+        <p class="admin-access-kicker admin-access-kicker-error">ไม่สามารถเปิดหน้าผู้ดูแล</p>
+        <h1 id="unauthorizedTitle">บัญชี Google นี้ไม่มีสิทธิ์เข้าถึง</h1>
+        <p id="unauthorizedDescription">
+          กรุณากลับไปเลือกบัญชี Google ที่ได้รับอนุญาตสำหรับระบบจัดการสมาชิก
+        </p>
+        <div class="admin-access-account" aria-label="บัญชี Google ที่ได้รับอนุญาต">
+          <span>บัญชีที่ได้รับอนุญาต</span>
+          <strong>tncgarment.thanuchai@gmail.com</strong>
+        </div>
+        <a
+          id="adminAccountSwitch"
+          class="admin-access-button"
+          href="?page=admin"
+          aria-describedby="unauthorizedDescription"
+          data-account-chooser="https://accounts.google.com/AccountChooser?continue=<?!= encodeURIComponent(getAdminPageUrl_()); ?>"
+        >
+          กลับไปเลือกบัญชี Google
+        </a>
+        <a class="admin-access-back" href="?">กลับหน้าหลัก</a>
+      </div>
     </section>
   </main>
+  <script>
+    (function () {
+      var switchLink = document.getElementById("adminAccountSwitch");
+      switchLink.addEventListener("click", function () {
+        var accountChooser = switchLink.getAttribute("data-account-chooser");
+        if (!accountChooser) return;
+        switchLink.setAttribute("href", accountChooser);
+      });
+    }());
+  </script>
 </body>
 </html>

@@ -23,13 +23,20 @@ test("authorizer accepts an allowlisted active user", () => {
   });
 });
 
-test("authorizer rejects blank or unlisted users", () => {
+test("authorizer requires Google login for a blank active user", () => {
   const blank = createAuthorizer(() => "", () => "admin@example.com");
+
+  assert.deepEqual(blank.requireAdmin(), {
+    ok: false,
+    code: "LOGIN_REQUIRED"
+  });
+});
+
+test("authorizer rejects an identified user who is not allowlisted", () => {
   const stranger = createAuthorizer(
     () => "stranger@example.com",
     () => "admin@example.com"
   );
 
-  assert.equal(blank.requireAdmin().code, ERROR_CODES.UNAUTHORIZED);
   assert.equal(stranger.requireAdmin().code, ERROR_CODES.UNAUTHORIZED);
 });
