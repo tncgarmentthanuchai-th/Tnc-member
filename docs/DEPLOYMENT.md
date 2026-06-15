@@ -22,7 +22,7 @@
 | --- | --- |
 | `SPREADSHEET_ID` | ID ของ Google Spreadsheet |
 | `SETUP_OWNER_EMAIL` | อีเมลเจ้าของที่มีสิทธิ์รัน bootstrap และติดตั้ง trigger |
-| `ADMIN_EMAILS` | อีเมลแอดมิน คั่นหลายบัญชีด้วย comma |
+| `ADMIN_EMAILS` | ต้องเป็น `tncgarment.thanuchai@gmail.com` เท่านั้น |
 
 ตัวอย่าง:
 
@@ -32,6 +32,8 @@ ADMIN_EMAILS=tncgarment.thanuchai@gmail.com
 ```
 
 `SETUP_OWNER_EMAIL` ต้องตรงกับ `Session.getActiveUser().getEmail()` จึงควรรันคำสั่งติดตั้งจากบัญชีเจ้าของเดียวกัน
+
+หน้าเข้าสู่ระบบสมาชิกแสดงรหัสประเทศ `+66` คงที่ สมาชิกกรอกเฉพาะเบอร์โทรศัพท์ 9 หลักโดยไม่ใส่เลข `0` ด้านหน้า เช่น `812345678` ระบบจะแปลงเป็น `0812345678` ก่อนตรวจสอบกับข้อมูลใน Sheet
 
 ## 3. ติดตั้งหรืออัปเกรด schema
 
@@ -77,6 +79,8 @@ URL หลังบ้าน: `ADMIN_DEPLOYMENT_URL?page=admin`
 
 ห้ามใช้ `PUBLIC_URL?page=admin` เป็น URL หลังบ้าน เพราะ public deployment ทำงานในสิทธิ์เจ้าของและไม่ได้ใช้สำหรับยืนยันผู้ดูแลแต่ละบัญชี
 
+หลังเปิด URL หลังบ้าน ให้เข้าสู่ระบบด้วย Google Account `tncgarment.thanuchai@gmail.com` เท่านั้น บัญชีอื่นต้องถูกปฏิเสธ แม้บัญชีนั้นจะเปิดหน้า deployment ได้
+
 ## 7. อัปเดต deployment เดิม
 
 หลังแก้ source:
@@ -87,12 +91,19 @@ URL หลังบ้าน: `ADMIN_DEPLOYMENT_URL?page=admin`
 4. เลือก **Deploy > Manage deployments**
 5. แก้ Public และ Admin deployment ให้ใช้ version ใหม่ โดยคง execute/access settings เดิม
 
+โปรเจกต์นี้ใช้ deployment แยกกันสองรายการ:
+
+- Public ต้องคง **Execute as Me** และ **Anyone**
+- Admin ต้องคง **Execute as User accessing the web app** และ **Anyone with Google account**
+
+เมื่ออัปเดตด้วย deployment ID เดิม ให้ตรวจค่าทั้งสองรายการใน **Manage deployments** อีกครั้ง ห้ามสร้าง Admin จากค่าของ Public หรือเปลี่ยน manifest เป็น execute-as-user ทั้งโปรเจกต์ เพราะจะทำให้หน้าสมัครสาธารณะไม่มีสิทธิ์เขียน Sheet
+
 ## 8. Production smoke test
 
 ทำตามลำดับนี้หลังสร้าง version ใหม่:
 
 1. สมัครสมาชิกหนึ่งรายและตรวจว่าเกิดแถวใน `Members`
-2. ล็อกอินด้วยเบอร์โทร + PIN
+2. ล็อกอินด้วย `+66` ตามด้วยเบอร์ 9 หลัก + PIN
 3. เปิดหน้าแอดมินและเพิ่มออร์เดอร์ `30,000` บาท
 4. ตรวจว่าแต้มเป็น `30,000` และระดับเปลี่ยนเป็น `Gold`
 5. เปิดหน้าสมาชิกและตรวจแต้ม ระดับ สิทธิประโยชน์ และประวัติออร์เดอร์
@@ -100,6 +111,8 @@ URL หลังบ้าน: `ADMIN_DEPLOYMENT_URL?page=admin`
 7. ตรวจว่าแต้มลดลง ระดับกลับเป็น `Silver` และรายการแสดงสถานะยกเลิก
 8. ตรวจ `AuditLog` ว่ามีการสร้างและยกเลิกออร์เดอร์
 9. เปิดหน้า Triggers และตรวจว่ามี reconciliation trigger เพียงหนึ่งรายการ
+10. เปิด Admin deployment ในหน้าต่างที่ยังไม่ล็อกอินและยืนยันว่า Google ขอให้เข้าสู่ระบบ
+11. ยืนยันว่า `tncgarment.thanuchai@gmail.com` เข้า Admin ได้ และบัญชีอื่นเห็นหน้าปฏิเสธสิทธิ์
 
 ## ข้อจำกัด
 
