@@ -88,6 +88,20 @@ test("admin route renders login, unauthorized, or admin by identity state", () =
   );
 });
 
+test("public member links use absolute web app URLs outside the Apps Script iframe", () => {
+  const code = fs.readFileSync(path.join(sourceDirectory, "Code.js"), "utf8");
+  const publicHtml = fs.readFileSync(path.join(sourceDirectory, "Public.html"), "utf8");
+  const memberHtml = fs.readFileSync(path.join(sourceDirectory, "Member.html"), "utf8");
+
+  assert.match(code, /function getMemberPageUrl_\(\)/);
+  assert.match(code, /ScriptApp\.getService\(\)\.getUrl\(\) \+ "\?page=member"/);
+  assert.match(code, /function getPublicPageUrl_\(\)/);
+  assert.match(publicHtml, /href="<\?!= getMemberPageUrl_\(\); \?>"/);
+  assert.doesNotMatch(publicHtml, /href="\?page=member"/);
+  assert.match(memberHtml, /href="<\?!= getPublicPageUrl_\(\); \?>"/);
+  assert.doesNotMatch(memberHtml, /href="\?"/);
+});
+
 test("admin APIs collapse blank sessions to the unauthorized contract", () => {
   const context = loadSource("Code.js", {
     ERROR_CODES: {
@@ -886,7 +900,7 @@ test("member page contains points dashboard and order history controls", () => {
   );
 });
 
-function createMemberLoginHarness() {
+function createMemberLoginHarness(options = {}) {
   const elements = new Map();
   const serverCalls = [];
   let successHandler = () => {};
@@ -978,12 +992,15 @@ function createMemberLoginHarness() {
     },
     localStorage: {
       getItem(key) {
+        if (options.blockLocalStorage) throw new Error("localStorage blocked");
         return persistentStorage.get(key) || null;
       },
       setItem(key, value) {
+        if (options.blockLocalStorage) throw new Error("localStorage blocked");
         persistentStorage.set(key, value);
       },
       removeItem(key) {
+        if (options.blockLocalStorage) throw new Error("localStorage blocked");
         persistentStorage.delete(key);
       }
     },
@@ -1029,6 +1046,13 @@ function createMemberLoginHarness() {
     }
   };
 }
+
+test("member login page still initializes when persistent browser storage is blocked", () => {
+  const harness = createMemberLoginHarness({ blockLocalStorage: true });
+
+  assert.ok(harness.getElement("loginForm").listeners.submit);
+  assert.equal(harness.serverCalls.length, 0);
+});
 
 test("member rewards card uses normalized tier themes and defaults to Silver", () => {
   const cases = [

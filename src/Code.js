@@ -13,6 +13,14 @@ function getAdminPageUrl_() {
   return ScriptApp.getService().getUrl() + "?page=admin";
 }
 
+function getMemberPageUrl_() {
+  return ScriptApp.getService().getUrl() + "?page=member";
+}
+
+function getPublicPageUrl_() {
+  return ScriptApp.getService().getUrl();
+}
+
 function doGet(event) {
   ensureSystemReady_();
   var page = event && event.parameter ? event.parameter.page : "";

@@ -2,22 +2,44 @@
   (function () {
     "use strict";
     var storageKey = "tncMemberSession";
-    // localStorage = จำไว้ข้ามการปิดเบราว์เซอร์ (จำฉันไว้), sessionStorage = เฉพาะแท็บนี้
-    var token = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey) || "";
+    // Browser storage can be blocked in Apps Script iframes, so keep login usable.
+    function storageGet(storage, key) {
+      try {
+        return storage && storage.getItem(key);
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function storageSet(storage, key, value) {
+      try {
+        if (storage) storage.setItem(key, value);
+      } catch (error) {}
+    }
+
+    function storageRemove(storage, key) {
+      try {
+        if (storage) storage.removeItem(key);
+      } catch (error) {}
+    }
+
+    var token = storageGet(localStorage, storageKey) ||
+      storageGet(sessionStorage, storageKey) ||
+      "";
 
     function saveToken(value, remember) {
       if (remember) {
-        localStorage.setItem(storageKey, value);
-        sessionStorage.removeItem(storageKey);
+        storageSet(localStorage, storageKey, value);
+        storageRemove(sessionStorage, storageKey);
       } else {
-        sessionStorage.setItem(storageKey, value);
-        localStorage.removeItem(storageKey);
+        storageSet(sessionStorage, storageKey, value);
+        storageRemove(localStorage, storageKey);
       }
     }
 
     function clearToken() {
-      localStorage.removeItem(storageKey);
-      sessionStorage.removeItem(storageKey);
+      storageRemove(localStorage, storageKey);
+      storageRemove(sessionStorage, storageKey);
     }
     var loginView = document.getElementById("loginView");
     var accountView = document.getElementById("accountView");
