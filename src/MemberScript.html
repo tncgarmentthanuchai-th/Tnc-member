@@ -172,6 +172,29 @@
       document.getElementById("tierProgressText").textContent = text;
     }
 
+    var LANDING_SITE_URL = "https://tncgarmentthanuchai-th.github.io/Tnc-landing-page/";
+
+    // แนบข้อมูลแสดงผล (ไม่ใช่ token) ไปกับลิงก์กลับเว็บไซต์ เพื่อให้เว็บแสดงสถานะล็อกอิน
+    function updateBackToSiteLink(member, tier, points) {
+      var link = document.getElementById("accountBackToSite");
+      if (!link) return;
+      try {
+        var info = {
+          name: member.fullname,
+          id: member.memberId,
+          tier: tier,
+          points: points,
+          t: Date.now()
+        };
+        var encoded = encodeURIComponent(
+          btoa(unescape(encodeURIComponent(JSON.stringify(info))))
+        );
+        link.href = LANDING_SITE_URL + "?tnc_member=" + encoded;
+      } catch (error) {
+        link.href = LANDING_SITE_URL;
+      }
+    }
+
     function renderAccount(result) {
       var member = result.member;
       var points = Number(member.points) || 0;
@@ -198,6 +221,7 @@
       document.getElementById("accountLastOrder").textContent = member.lastOrderAt
         ? "สั่งซื้อล่าสุด " + formatDate(member.lastOrderAt)
         : "ยังไม่มีรายการสั่งซื้อ";
+      updateBackToSiteLink(member, tier, points);
       renderTierProgress(points, tier);
       renderBenefits(currentBenefits);
       document.getElementById("accountFullname").value = member.fullname;
